@@ -1,0 +1,72 @@
+import { z } from 'zod';
+export declare const createClientSchema: z.ZodObject<{
+    email: z.ZodOptional<z.ZodString>;
+    phone: z.ZodOptional<z.ZodString>;
+    firstName: z.ZodOptional<z.ZodString>;
+    lastName: z.ZodOptional<z.ZodString>;
+    dateOfBirth: z.ZodOptional<z.ZodDate>;
+    gender: z.ZodOptional<z.ZodString>;
+    occupation: z.ZodOptional<z.ZodString>;
+    emergContact: z.ZodOptional<z.ZodString>;
+    emergPhone: z.ZodOptional<z.ZodString>;
+    address: z.ZodOptional<z.ZodString>;
+    referredBy: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    email?: string | undefined;
+    phone?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    dateOfBirth?: Date | undefined;
+    gender?: string | undefined;
+    occupation?: string | undefined;
+    emergContact?: string | undefined;
+    emergPhone?: string | undefined;
+    address?: string | undefined;
+    referredBy?: string | undefined;
+}, {
+    email?: string | undefined;
+    phone?: string | undefined;
+    firstName?: string | undefined;
+    lastName?: string | undefined;
+    dateOfBirth?: Date | undefined;
+    gender?: string | undefined;
+    occupation?: string | undefined;
+    emergContact?: string | undefined;
+    emergPhone?: string | undefined;
+    address?: string | undefined;
+    referredBy?: string | undefined;
+}>;
+export declare const updateClientSchema: z.ZodObject<{
+    dateOfBirth: z.ZodOptional<z.ZodDate>;
+    gender: z.ZodOptional<z.ZodString>;
+    occupation: z.ZodOptional<z.ZodString>;
+    emergContact: z.ZodOptional<z.ZodString>;
+    emergPhone: z.ZodOptional<z.ZodString>;
+    address: z.ZodOptional<z.ZodString>;
+    consentSigned: z.ZodOptional<z.ZodBoolean>;
+    recordingConsent: z.ZodOptional<z.ZodBoolean>;
+    dataProcessConsent: z.ZodOptional<z.ZodBoolean>;
+    isActive: z.ZodOptional<z.ZodBoolean>;
+}, "strip", z.ZodTypeAny, {
+    dateOfBirth?: Date | undefined;
+    gender?: string | undefined;
+    occupation?: string | undefined;
+    emergContact?: string | undefined;
+    emergPhone?: string | undefined;
+    address?: string | undefined;
+    consentSigned?: boolean | undefined;
+    recordingConsent?: boolean | undefined;
+    dataProcessConsent?: boolean | undefined;
+    isActive?: boolean | undefined;
+}, {
+    dateOfBirth?: Date | undefined;
+    gender?: string | undefined;
+    occupation?: string | undefined;
+    emergContact?: string | undefined;
+    emergPhone?: string | undefined;
+    address?: string | undefined;
+    consentSigned?: boolean | undefined;
+    recordingConsent?: boolean | undefined;
+    dataProcessConsent?: boolean | undefined;
+    isActive?: boolean | undefined;
+}>;

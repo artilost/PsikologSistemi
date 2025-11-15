@@ -1,0 +1,395 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  THERAPIST
+  ASSISTANT
+  CLIENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+}
+
+enum SessionNoteStatus {
+  DRAFT
+  COMPLETED
+  REVIEWED
+  ARCHIVED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  PARTIALLY_PAID
+  REFUNDED
+  CANCELLED
+  FAILED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  BANK_TRANSFER
+  ONLINE
+  INSURANCE
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+  WHATSAPP
+  PUSH
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  READ
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  phone     String?    @unique
+  password  String // hashed
+  firstName String
+  lastName  String
+  role      UserRole   @default(CLIENT)
+  status    UserStatus @default(PENDING_VERIFICATION)
+  avatar    String?
+
+  // MFA
+  mfaEnabled Boolean @default(false)
+  mfaSecret  String?
+
+  // Metadata
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // Soft delete
+
+  // Relations
+  therapistProfile TherapistProfile?
+  clientProfile    ClientProfile?
+  appointments     Appointment[]
+  sessions         Session[]
+  payments         Payment[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+model TherapistProfile {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber   String? @unique
+  specialization  String[]
+  biography       String?
+  yearsExperience Int?
+  hourlyRate      Decimal @default(0) @db.Decimal(10, 2)
+
+  // Availability settings
+  workingHours Json? // { monday: { start: "09:00", end: "17:00" }, ... }
+  timeZone     String @default("Europe/Istanbul")
+
+  // Settings
+  sessionDuration        Int     @default(50) // minutes
+  allowOnlineBooking     Boolean @default(true)
+  autoConfirmAppointment Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments Appointment[]
+  sessions     Session[]
+
+  @@map("therapist_profiles")
+}
+
+model ClientProfile {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth  DateTime?
+  gender       String?
+  occupation   String?
+  emergContact String?
+  emergPhone   String?
+  address      String?
+
+  // Medical info (encrypted at application level)
+  medicalHistory    String?
+  currentMedication String?
+  allergies         String?
+  referredBy        String?
+
+  // Consent & Legal
+  consentSigned      Boolean   @default(false)
+  consentSignedAt    DateTime?
+  recordingConsent   Boolean   @default(false)
+  dataProcessConsent Boolean   @default(false)
+
+  // Status
+  isActive Boolean   @default(true)
+  notes    String? // Internal notes (therapist only)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments Appointment[]
+  sessions     Session[]
+
+  @@index([userId])
+  @@map("client_profiles")
+}
+
+// ============================================
+// APPOINTMENT & SESSION
+// ============================================
+
+model Appointment {
+  id          String            @id @default(cuid())
+  therapistId String
+  therapist   TherapistProfile  @relation(fields: [therapistId], references: [id])
+  clientId    String
+  client      ClientProfile     @relation(fields: [clientId], references: [id])
+  userId      String // redundant for quick queries
+  user        User              @relation(fields: [userId], references: [id])
+
+  // Schedule
+  startTime DateTime
+  endTime   DateTime
+  duration  Int // minutes
+  timeZone  String @default("Europe/Istanbul")
+
+  // Status & Type
+  status       AppointmentStatus @default(SCHEDULED)
+  type         String            @default("individual") // individual, group, online, in-person
+  isOnline     Boolean           @default(false)
+  meetingLink  String?
+  location     String?
+
+  // Notifications
+  reminderSentAt DateTime?
+  confirmedAt    DateTime?
+
+  // Cancellation
+  cancelledAt     DateTime?
+  cancellationReason String?
+
+  // Notes
+  appointmentNotes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  session Session?
+
+  @@index([therapistId, startTime])
+  @@index([clientId, startTime])
+  @@index([userId])
+  @@index([status])
+  @@index([startTime])
+  @@map("appointments")
+}
+
+model Session {
+  id            String @id @default(cuid())
+  appointmentId String @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  therapistId String
+  therapist   TherapistProfile @relation(fields: [therapistId], references: [id])
+  clientId    String
+  client      ClientProfile    @relation(fields: [clientId], references: [id])
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+
+  // Session details
+  sessionNumber Int? // e.g., 1st, 2nd session
+  actualStart   DateTime?
+  actualEnd     DateTime?
+  duration      Int? // actual duration in minutes
+
+  // Notes (field-level encrypted in app)
+  clinicalNotes     String?
+  treatmentPlan     String?
+  progressNotes     String?
+  diagnosis         String?
+  interventions     String[]
+  homework          String?
+  riskAssessment    String?
+
+  // AI/Recording
+  recordingUrl      String?
+  transcriptionUrl  String?
+  aiSummary         String?
+
+  // Status
+  noteStatus SessionNoteStatus @default(DRAFT)
+  signedAt   DateTime?
+  signedBy   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payment Payment?
+
+  @@index([therapistId])
+  @@index([clientId])
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ============================================
+// PAYMENTS & BILLING
+// ============================================
+
+model Payment {
+  id        String        @id @default(cuid())
+  sessionId String?       @unique
+  session   Session?      @relation(fields: [sessionId], references: [id])
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+
+  amount        Decimal       @db.Decimal(10, 2)
+  currency      String        @default("TRY")
+  status        PaymentStatus @default(PENDING)
+  method        PaymentMethod @default(CASH)
+
+  // Payment details
+  paidAt          DateTime?
+  paidAmount      Decimal?  @db.Decimal(10, 2)
+  remainingAmount Decimal?  @db.Decimal(10, 2)
+
+  // External integrations
+  stripePaymentId String?
+  iyzicoPaymentId String?
+  invoiceUrl      String?
+  receiptUrl      String?
+
+  // Refund
+  refundedAt     DateTime?
+  refundAmount   Decimal?  @db.Decimal(10, 2)
+  refundReason   String?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([paidAt])
+  @@map("payments")
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id     String             @id @default(cuid())
+  userId String
+  user   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  status  NotificationStatus @default(PENDING)
+  channel String // email, sms, whatsapp, push
+
+  subject String?
+  message String
+  data    Json? // Additional structured data
+
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  failedAt    DateTime?
+  errorMsg    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================
+// AUDIT & SECURITY
+// ============================================
+
+model AuditLog {
+  id       String   @id @default(cuid())
+  userId   String?
+  user     User?    @relation(fields: [userId], references: [id])
+
+  action       String // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc.
+  resource     String // User, Appointment, Session, etc.
+  resourceId   String?
+  changes      Json? // What changed
+  ipAddress    String?
+  userAgent    String?
+  timestamp    DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+model SystemConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_configs")
+}
+

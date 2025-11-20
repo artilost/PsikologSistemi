@@ -15,11 +15,12 @@ datasource db {
 // ============================================
 
 enum UserRole {
-  SUPER_ADMIN
-  ADMIN
-  THERAPIST
-  ASSISTANT
-  CLIENT
+  SUPER_ADMIN     // Platform yöneticisi (tüm kliniklere erişebilir)
+  ADMIN           // Klinik yöneticisi (kendi kliniğini yönetir)
+  THERAPIST       // Terapist
+  RECEPTIONIST    // Resepsiyonist/Asistan
+  ACCOUNTANT      // Muhasebe
+  CLIENT          // Hasta/Danışan
 }
 
 enum UserStatus {
@@ -80,6 +81,87 @@ enum NotificationStatus {
   READ
 }
 
+enum LocationType {
+  BRANCH
+  FLOOR
+  ONLINE
+}
+
+enum RoomType {
+  INDIVIDUAL
+  GROUP
+  PLAY_THERAPY
+  EMDR
+  COUPLE
+  OTHER
+}
+
+enum WaitlistStatus {
+  PENDING
+  NOTIFIED
+  BOOKED
+  EXPIRED
+  CANCELLED
+}
+
+enum FormStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+}
+
+enum PackageStatus {
+  ACTIVE
+  USED_UP
+  EXPIRED
+  CANCELLED
+}
+
+// ============================================
+// ORGANIZATION (MULTI-TENANT)
+// ============================================
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String   // "Kadıköy Psikoloji Merkezi"
+  slug        String   @unique // "kadikoy-psikoloji"
+  description String?
+  logo        String?
+  
+  // Contact
+  email       String?
+  phone       String?
+  website     String?
+  address     String?
+  city        String?
+  country     String   @default("Turkey")
+  
+  // Business Info
+  taxNumber   String?  @unique
+  taxOffice   String?
+  
+  // Subscription & Billing
+  subscriptionPlan   String   @default("trial") // trial, basic, premium, enterprise
+  subscriptionStatus String   @default("active") // active, suspended, cancelled
+  subscriptionExpiresAt DateTime?
+  
+  // Settings
+  settings    Json?    // Klinik özel ayarlar
+  isActive    Boolean  @default(true)
+  
+  // Relations
+  users       User[]
+  locations   Location[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([slug])
+  @@index([isActive])
+  @@map("organizations")
+}
+
 // ============================================
 // USER MANAGEMENT
 // ============================================
@@ -94,6 +176,10 @@ model User {
   role      UserRole   @default(CLIENT)
   status    UserStatus @default(PENDING_VERIFICATION)
   avatar    String?
+
+  // Organization (Multi-Tenant)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
 
   // MFA
   mfaEnabled Boolean @default(false)
@@ -113,11 +199,19 @@ model User {
   payments         Payment[]
   notifications    Notification[]
   auditLogs        AuditLog[]
+  linkedAccounts   LinkedAccount[] @relation("MasterAccount")
+  subAccounts      LinkedAccount[] @relation("SubAccount")
+  waitlistRequests WaitlistRequest[]
+  intakeForms       IntakeForm[]
+  sessionPackages   SessionPackage[]
+  calendarSyncs     CalendarSync[]
+  dataExports       DataExport[]
 
   @@index([email])
   @@index([phone])
   @@index([role])
   @@index([status])
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -132,8 +226,11 @@ model TherapistProfile {
   hourlyRate      Decimal @default(0) @db.Decimal(10, 2)
 
   // Availability settings
-  workingHours Json? // { monday: { start: "09:00", end: "17:00" }, ... }
+  workingHours Json? // { monday: { start: "09:00", end: "17:00", locationId: "xxx" }, ... }
   timeZone     String @default("Europe/Istanbul")
+  
+  // Location-based availability
+  locations     TherapistLocation[]
 
   // Settings
   sessionDuration        Int     @default(50) // minutes
@@ -145,8 +242,30 @@ model TherapistProfile {
 
   appointments Appointment[]
   sessions     Session[]
-
+  waitlistRequests WaitlistRequest[]
+  
   @@map("therapist_profiles")
+}
+
+model TherapistLocation {
+  id           String  @id @default(cuid())
+  therapistId String
+  therapist   TherapistProfile @relation(fields: [therapistId], references: [id], onDelete: Cascade)
+  locationId   String
+  location     Location @relation(fields: [locationId], references: [id])
+  
+  // Day-specific availability
+  dayOfWeek    Int // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime    String // "09:00"
+  endTime      String // "17:00"
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([therapistId, locationId, dayOfWeek])
+  @@index([therapistId])
+  @@index([locationId])
+  @@map("therapist_locations")
 }
 
 model ClientProfile {
@@ -181,9 +300,290 @@ model ClientProfile {
 
   appointments Appointment[]
   sessions     Session[]
-
+  
   @@index([userId])
   @@map("client_profiles")
+}
+
+// ============================================
+// LOCATION & ROOM MANAGEMENT
+// ============================================
+
+model Location {
+  id          String      @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name        String      // "Kadıköy Şube", "Nişantaşı Şube"
+  type        LocationType @default(BRANCH)
+  address     String?
+  city        String?
+  country     String      @default("Turkey")
+  phone       String?
+  email       String?
+  isActive    Boolean     @default(true)
+  
+  // Relations
+  rooms       Room[]
+  therapistLocations TherapistLocation[]
+  appointments Appointment[]
+  waitlistRequests WaitlistRequest[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("locations")
+}
+
+model Room {
+  id          String   @id @default(cuid())
+  locationId  String
+  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  name        String   // "Oyun Terapisi Odası", "EMDR Odası"
+  type        RoomType
+  capacity    Int      @default(1)
+  description String?
+  isActive    Boolean  @default(true)
+  
+  // Relations
+  appointments Appointment[]
+  waitlistRequests WaitlistRequest[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([locationId])
+  @@index([type])
+  @@index([isActive])
+  @@map("rooms")
+}
+
+// ============================================
+// LINKED ACCOUNTS (FAMILY MANAGEMENT)
+// ============================================
+
+model LinkedAccount {
+  id            String   @id @default(cuid())
+  masterUserId  String
+  masterUser    User     @relation("MasterAccount", fields: [masterUserId], references: [id], onDelete: Cascade)
+  subUserId     String
+  subUser       User     @relation("SubAccount", fields: [subUserId], references: [id], onDelete: Cascade)
+  relationship  String   // "parent", "guardian", "spouse", "partner"
+  isActive      Boolean  @default(true)
+  
+  // Privacy settings
+  canViewNotes  Boolean  @default(false) // Ebeveyn seans notlarını görebilir mi?
+  canViewPayments Boolean @default(true)  // Ebeveyn ödemeleri görebilir mi?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([masterUserId, subUserId])
+  @@index([masterUserId])
+  @@index([subUserId])
+  @@map("linked_accounts")
+}
+
+// ============================================
+// WAITLIST
+// ============================================
+
+model WaitlistRequest {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  therapistId String
+  therapist   TherapistProfile @relation(fields: [therapistId], references: [id])
+  locationId  String?
+  location    Location?      @relation(fields: [locationId], references: [id])
+  roomId      String?
+  room        Room?          @relation(fields: [roomId], references: [id])
+  
+  // Requested time slot
+  preferredDate DateTime
+  preferredTime  String // "14:00"
+  duration       Int    @default(50) // minutes
+  
+  status      WaitlistStatus @default(PENDING)
+  priority    Int            @default(0) // Higher number = higher priority
+  
+  // Notification
+  notifiedAt  DateTime?
+  notifiedCount Int @default(0)
+  
+  // If booked
+  appointmentId String? @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  
+  notes       String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt  DateTime? // Auto-expire after X days
+  
+  @@index([therapistId, preferredDate])
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("waitlist_requests")
+}
+
+// ============================================
+// RECEPTION & CHECK-IN
+// ============================================
+
+model ReceptionCheckIn {
+  id            String   @id @default(cuid())
+  appointmentId String   @unique
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  
+  checkedInAt   DateTime @default(now())
+  checkedInBy   String?  // Assistant user ID (no relation needed, just store ID)
+  waitTime      Int?     // minutes waited
+  
+  // Delay management
+  delayMinutes  Int?     // Seans X dakika gecikiyor
+  delayNotifiedAt DateTime?
+  
+  notes         String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([checkedInAt])
+  @@map("reception_check_ins")
+}
+
+// ============================================
+// INTAKE FORMS
+// ============================================
+
+model IntakeForm {
+  id            String     @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  formType      String     // "general", "kvkk", "beck_depression", "custom"
+  formData      Json       // Form answers
+  formTemplate  Json?      // Form structure
+  
+  status        FormStatus @default(PENDING)
+  completedAt   DateTime?
+  signedAt      DateTime?
+  signature     String?    // Digital signature
+  
+  // PDF storage
+  pdfUrl        String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  expiresAt  DateTime? // Form expires if not completed
+  
+  @@index([appointmentId])
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("intake_forms")
+}
+
+// ============================================
+// SESSION PACKAGES
+// ============================================
+
+model SessionPackage {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  name          String        // "10 Seans Paketi"
+  totalSessions Int           // 10
+  usedSessions  Int           @default(0)
+  discount      Decimal?      @db.Decimal(5, 2) // 20.00 = %20
+  price         Decimal       @db.Decimal(10, 2)
+  paidAmount    Decimal       @db.Decimal(10, 2)
+  
+  status        PackageStatus @default(ACTIVE)
+  
+  // Expiry
+  purchasedAt   DateTime      @default(now())
+  expiresAt     DateTime?
+  
+  // Relations
+  payments      Payment[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("session_packages")
+}
+
+// ============================================
+// CALENDAR SYNC
+// ============================================
+
+model CalendarSync {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  provider      String   // "google", "outlook", "apple"
+  calendarId    String   // External calendar ID
+  accessToken   String   // Encrypted
+  refreshToken  String?  // Encrypted
+  syncEnabled   Boolean  @default(true)
+  
+  // Sync direction
+  syncToExternal Boolean @default(false) // System -> External
+  syncFromExternal Boolean @default(true) // External -> System
+  
+  lastSyncAt    DateTime?
+  nextSyncAt    DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([syncEnabled])
+  @@map("calendar_syncs")
+}
+
+// ============================================
+// DATA EXPORT
+// ============================================
+
+model DataExport {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status        String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  exportType    String   @default("FULL") // FULL, APPOINTMENTS, SESSIONS, PAYMENTS
+  
+  // File storage
+  fileUrl       String?
+  fileSize      Int?     // bytes
+  expiresAt     DateTime? // Download link expires
+  
+  // Processing
+  startedAt     DateTime?
+  completedAt   DateTime?
+  failedAt      DateTime?
+  errorMessage  String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("data_exports")
 }
 
 // ============================================
@@ -210,7 +610,7 @@ model Appointment {
   type         String            @default("individual") // individual, group, online, in-person
   isOnline     Boolean           @default(false)
   meetingLink  String?
-  location     String?
+  // location field moved to Location relation below
 
   // Notifications
   reminderSentAt DateTime?
@@ -227,12 +627,29 @@ model Appointment {
   updatedAt DateTime @updatedAt
 
   session Session?
-
+  
+  // Location & Room
+  locationId String?
+  location   Location? @relation(fields: [locationId], references: [id])
+  roomId     String?
+  room       Room?     @relation(fields: [roomId], references: [id])
+  
+  // Waitlist
+  waitlistRequest WaitlistRequest?
+  
+  // Check-in
+  checkIn ReceptionCheckIn?
+  
+  // Intake forms
+  intakeForms IntakeForm[]
+  
   @@index([therapistId, startTime])
   @@index([clientId, startTime])
   @@index([userId])
   @@index([status])
   @@index([startTime])
+  @@index([locationId])
+  @@index([roomId])
   @@map("appointments")
 }
 
@@ -277,10 +694,14 @@ model Session {
   updatedAt DateTime @updatedAt
 
   payment Payment?
+  
+  // Privacy
+  isPrivate Boolean @default(false) // Gizli not (ebeveyn göremez)
 
   @@index([therapistId])
   @@index([clientId])
   @@index([userId])
+  @@index([isPrivate])
   @@map("sessions")
 }
 
@@ -317,6 +738,10 @@ model Payment {
   refundReason   String?
 
   notes String?
+  
+  // Session Package
+  packageId String?
+  package   SessionPackage? @relation(fields: [packageId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -324,6 +749,7 @@ model Payment {
   @@index([userId])
   @@index([status])
   @@index([paidAt])
+  @@index([packageId])
   @@map("payments")
 }
 

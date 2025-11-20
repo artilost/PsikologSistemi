@@ -1,3 +1,13 @@
+# CodeQL Workflow (Currently Disabled)
+# 
+# To enable this workflow:
+# 1. Go to GitHub Repository Settings
+# 2. Security → Code security and analysis
+# 3. Enable "Code scanning"
+# 4. Rename this file from .yml.disabled to .yml
+#
+# Then run: git add .github/workflows/codeql.yml && git commit -m "ci: enable codeql" && git push
+
 name: "CodeQL"
 
 on:
@@ -45,11 +55,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate Prisma Client
-        run: pnpm --filter @psikolog/api db:generate
-
-      - name: Build shared packages
-        run: pnpm --filter @psikolog/shared build
+      - name: Prepare CI (Prisma + Shared Build)
+        run: pnpm ci:prepare
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
@@ -58,3 +65,4 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
+

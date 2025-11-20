@@ -34,5 +34,5 @@ export interface ProcessPaymentDto {
     paymentId: string;
     amount: number;
     method: PaymentMethod;
-    paymentDetails?: any;
+    paymentDetails?: Record<string, unknown>;
 }

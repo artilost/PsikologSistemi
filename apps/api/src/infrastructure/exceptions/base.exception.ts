@@ -4,7 +4,7 @@ export interface ErrorDetails {
   field?: string;
   message?: string;
   code?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export class BaseException extends HttpException {

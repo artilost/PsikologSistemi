@@ -1,4 +1,4 @@
-export interface BaseRepository<T, CreateInput = any, UpdateInput = any> {
+export interface BaseRepository<T, CreateInput = unknown, UpdateInput = unknown> {
   /**
    * Find entity by ID
    */

@@ -1,11 +1,20 @@
 import { Injectable, LoggerService as NestLoggerService, Scope } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Request, Response } from 'express';
 import * as pino from 'pino';
 
 export type LogLevel = 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace';
 
 export interface LogContext {
-  [key: string]: any;
+  [key: string]: unknown;
+}
+
+interface RequestWithUser extends Request {
+  requestId?: string;
+  user?: {
+    id: string;
+    [key: string]: unknown;
+  };
 }
 
 @Injectable({ scope: Scope.TRANSIENT })
@@ -75,30 +84,32 @@ export class LoggerService implements NestLoggerService {
   }
 
   // Structured logging methods
-  logRequest(req: any) {
+  logRequest(req: Request) {
+    const reqWithUser = req as RequestWithUser;
     this.logger.info({
       type: 'request',
-      requestId: req.requestId || req.headers['x-request-id'],
+      requestId: reqWithUser.requestId || req.headers['x-request-id'],
       method: req.method,
       url: req.url,
-      headers: this.sanitizeHeaders(req.headers),
+      headers: this.sanitizeHeaders(req.headers as Record<string, unknown>),
       query: req.query,
       params: req.params,
       ip: req.ip,
       userAgent: req.get('user-agent'),
-      userId: req.user?.id,
+      userId: reqWithUser.user?.id,
     }, `${req.method} ${req.url}`);
   }
 
-  logResponse(req: any, res: any, responseTime: number) {
+  logResponse(req: Request, res: Response, responseTime: number) {
+    const reqWithUser = req as RequestWithUser;
     this.logger.info({
       type: 'response',
-      requestId: req.requestId || req.headers['x-request-id'],
+      requestId: reqWithUser.requestId || req.headers['x-request-id'],
       method: req.method,
       url: req.url,
       statusCode: res.statusCode,
       responseTime: `${responseTime}ms`,
-      userId: req.user?.id,
+      userId: reqWithUser.user?.id,
     }, `${req.method} ${req.url} ${res.statusCode} - ${responseTime}ms`);
   }
 
@@ -154,7 +165,7 @@ export class LoggerService implements NestLoggerService {
     };
   }
 
-  private sanitizeHeaders(headers: any): any {
+  private sanitizeHeaders(headers: Record<string, unknown>): Record<string, unknown> {
     const sanitized = { ...headers };
     const sensitiveHeaders = ['authorization', 'cookie', 'x-api-key'];
     

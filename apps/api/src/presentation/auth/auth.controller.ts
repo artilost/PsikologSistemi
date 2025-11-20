@@ -100,7 +100,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Login successful' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async login(@Request() req: AuthenticatedRequest, @Body() _dto: LoginDto) {
+  async login(@Request() req: AuthenticatedRequest) {
     return this.authService.login(req.user);
   }
 

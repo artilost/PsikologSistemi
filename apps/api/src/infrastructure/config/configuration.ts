@@ -1,5 +1,4 @@
 import { registerAs } from '@nestjs/config';
-import { Environment } from './env.validation';
 
 export const appConfig = registerAs('app', () => ({
   nodeEnv: process.env.NODE_ENV || 'development',

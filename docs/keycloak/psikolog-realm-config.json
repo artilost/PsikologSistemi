@@ -1,0 +1,82 @@
+{
+  "realm": "psikolog-realm",
+  "enabled": true,
+  "displayName": "Psikolog Sistemi",
+  "loginWithEmailAllowed": true,
+  "registrationAllowed": true,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "verifyEmail": false,
+  "sslRequired": "external",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "clients": [
+    {
+      "clientId": "psikolog-api",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": true,
+      "redirectUris": [
+        "http://localhost:3001/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3001",
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "psikolog-web",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:3000/api/auth/callback/keycloak"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "super-admin",
+        "description": "Süper yönetici - Tam sistem erişimi"
+      },
+      {
+        "name": "admin",
+        "description": "Yönetici - Klinik yönetimi ve raporlar"
+      },
+      {
+        "name": "therapist",
+        "description": "Terapist - Hasta ve seans yönetimi"
+      },
+      {
+        "name": "assistant",
+        "description": "Asistan - Randevu ve destek görevleri"
+      },
+      {
+        "name": "client",
+        "description": "Danışan - Kısıtlı erişim"
+      }
+    ]
+  },
+  "defaultRoles": ["client"]
+}
+

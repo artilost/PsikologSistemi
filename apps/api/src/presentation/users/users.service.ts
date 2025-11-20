@@ -149,6 +149,7 @@ export class UsersService {
    * Remove password from user object
    */
   private sanitizeUser(user: User): UserDto {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, mfaSecret, ...sanitized } = user;
     return sanitized as UserDto;
   }

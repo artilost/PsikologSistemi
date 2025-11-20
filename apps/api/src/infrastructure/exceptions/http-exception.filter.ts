@@ -41,7 +41,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   private buildErrorResponse(exception: unknown, request: Request) {
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-    let body: ErrorResponse = {
+    const body: ErrorResponse = {
       success: false,
       error: {
         code: 'INTERNAL_SERVER_ERROR',

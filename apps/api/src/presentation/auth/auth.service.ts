@@ -74,7 +74,7 @@ export class AuthService {
     };
   }
 
-  async validateUser(email: string, password: string): Promise<any> {
+  async validateUser(email: string, password: string): Promise<Omit<Awaited<ReturnType<typeof this.prisma.user.findUnique>>, 'password'> | null> {
     const user = await this.prisma.user.findUnique({
       where: { email },
     });
@@ -98,7 +98,15 @@ export class AuthService {
     return result;
   }
 
-  async login(user: any) {
+  async login(user: { 
+    id: string; 
+    email: string; 
+    role: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    avatar?: string | null;
+    [key: string]: unknown;
+  }) {
     const payload = {
       sub: user.id,
       email: user.email,

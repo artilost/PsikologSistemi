@@ -3,6 +3,10 @@ import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { LoggerService } from './logger.service';
 
+interface RequestWithId extends Request {
+  requestId?: string;
+}
+
 @Injectable()
 export class HttpLoggerMiddleware implements NestMiddleware {
   constructor(private readonly logger: LoggerService) {
@@ -20,7 +24,7 @@ export class HttpLoggerMiddleware implements NestMiddleware {
     res.setHeader('X-Request-ID', requestId);
 
     // Attach request ID to request object for easy access
-    (req as any).requestId = requestId;
+    (req as RequestWithId).requestId = requestId;
 
     // Log incoming request
     this.logger.logRequest(req);

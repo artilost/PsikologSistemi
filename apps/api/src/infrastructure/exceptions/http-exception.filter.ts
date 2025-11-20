@@ -14,12 +14,36 @@ interface ErrorResponse {
   error: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
   timestamp: string;
   path: string;
   method: string;
   requestId?: string;
+}
+
+interface BaseExceptionResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+  timestamp: string;
+}
+
+interface HttpExceptionResponse {
+  error?: string;
+  message?: string | string[];
+  details?: unknown;
+  statusCode?: number;
+}
+
+interface RequestWithUser extends Request {
+  user?: {
+    id: string;
+    [key: string]: unknown;
+  };
 }
 
 @Catch()
@@ -56,7 +80,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (exception instanceof BaseException) {
       // Custom domain exceptions
       statusCode = exception.getStatus();
-      const exceptionResponse = exception.getResponse() as any;
+      const exceptionResponse = exception.getResponse() as BaseExceptionResponse;
       body.error = exceptionResponse.error;
       body.timestamp = exceptionResponse.timestamp;
     } else if (exception instanceof HttpException) {
@@ -65,10 +89,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const exceptionResponse = exception.getResponse();
 
       if (typeof exceptionResponse === 'object') {
+        const response = exceptionResponse as HttpExceptionResponse;
+        const message = Array.isArray(response.message) 
+          ? response.message.join(', ') 
+          : response.message || exception.message;
+        
         body.error = {
-          code: (exceptionResponse as any).error || 'HTTP_EXCEPTION',
-          message: (exceptionResponse as any).message || exception.message,
-          details: (exceptionResponse as any).details,
+          code: response.error || 'HTTP_EXCEPTION',
+          message,
+          details: response.details,
         };
       } else {
         body.error = {
@@ -94,10 +123,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
     return { statusCode, body };
   }
 
-  private logError(exception: unknown, request: Request, errorResponse: any) {
+  private logError(
+    exception: unknown, 
+    request: Request, 
+    errorResponse: { statusCode: number; body: ErrorResponse }
+  ) {
     const { statusCode, body } = errorResponse;
     const { method, url, ip } = request;
     const userAgent = request.get('user-agent') || '';
+    const requestWithUser = request as RequestWithUser;
 
     const logMessage = `${method} ${url} ${statusCode} - ${body.error.code}`;
     const logContext = {
@@ -108,7 +142,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       ip,
       userAgent,
       requestId: body.requestId,
-      user: (request as any).user?.id,
+      user: requestWithUser.user?.id,
     };
 
     if (statusCode >= 500) {

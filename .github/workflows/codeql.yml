@@ -1,4 +1,4 @@
-name: "CodeQL Security Scan"
+name: "CodeQL"
 
 on:
   push:
@@ -31,9 +31,30 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @psikolog/api db:generate
+
+      - name: Build shared packages
+        run: pnpm --filter @psikolog/shared build
+
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
-
+        with:
+          category: "/language:${{ matrix.language }}"

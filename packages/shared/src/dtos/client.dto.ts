@@ -50,6 +50,7 @@ export interface CreateClientProfileDto {
 
 export interface UpdateClientProfileDto extends Partial<CreateClientProfileDto> {
   isActive?: boolean;
+  therapistProfileId?: string | null;
 }
 
 export interface ClientWithProfileDto extends UserDto {

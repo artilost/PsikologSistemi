@@ -39,6 +39,7 @@ export const updateClientProfileSchema = z.object({
   dataProcessConsent: z.boolean().optional(),
   isActive: z.boolean().optional(),
   notes: z.string().max(5000).optional(),
+  therapistProfileId: z.string().optional().nullable(),
 });
 
 export const clientQuerySchema = z.object({

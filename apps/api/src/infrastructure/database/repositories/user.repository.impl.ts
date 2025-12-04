@@ -13,7 +13,48 @@ export class UserRepositoryImpl implements UserRepository {
     });
   }
 
-  async findAll(page = 1, limit = 20): Promise<{
+  async findAll(page = 1, limit = 20, includeDeleted = false): Promise<{
+    data: User[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const skip = (page - 1) * limit;
+
+    // For CLIENT role users, also check if ClientProfile isActive is true
+    // This ensures that clients deleted from clients page (isActive: false) don't appear in users page
+    const where = includeDeleted 
+      ? {} 
+      : {
+          deletedAt: null,
+          // If user is CLIENT, only show if ClientProfile isActive is true
+          OR: [
+            { role: { not: 'CLIENT' } }, // Non-CLIENT users are shown if deletedAt is null
+            {
+              role: 'CLIENT',
+              clientProfile: {
+                isActive: true, // CLIENT users are only shown if their ClientProfile isActive is true
+              },
+            },
+          ],
+        };
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({
+        where,
+      }),
+    ]);
+
+    return { data, total, page, limit };
+  }
+
+  async findAllDeleted(page = 1, limit = 20): Promise<{
     data: User[];
     total: number;
     page: number;
@@ -23,13 +64,13 @@ export class UserRepositoryImpl implements UserRepository {
 
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({
-        where: { deletedAt: null },
+        where: { deletedAt: { not: null } },
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { deletedAt: 'desc' },
       }),
       this.prisma.user.count({
-        where: { deletedAt: null },
+        where: { deletedAt: { not: null } },
       }),
     ]);
 

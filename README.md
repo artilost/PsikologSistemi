@@ -128,7 +128,7 @@ Environment files are already configured:
 3. **Appointment Management** - Smart scheduling, conflict prevention, waitlist, reminders
 4. **Session Management** - Secure notes with field-level encryption, AI assist, private notes
 5. **Client Records** - Comprehensive EHR with KVKK compliance, intake forms
-6. **Payments & Billing** - Session packages, multiple payment methods, invoice generation
+6. **Payments & Billing** - Session packages, multiple payment methods, invoice generation, refund management, partial payments
 7. **Multi-Location & Rooms** - Branch management, room allocation, therapist-location mapping
 8. **Reception Desk** - Check-in, delay management, waitlist notifications
 9. **Reporting & Analytics** - Performance metrics, financial reports (per organization)

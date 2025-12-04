@@ -7,12 +7,15 @@ import {
   UseGuards,
   Request,
   Get,
+  UnauthorizedException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './guards/optional-jwt.guard';
 import {
   LoginDto,
   CreateUserDto,
@@ -39,16 +42,17 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @UseGuards(OptionalJwtAuthGuard) // Optional auth - allows request even without token
   @ApiOperation({ 
     summary: 'Register a new user',
-    description: 'Create a new user account with email, password, and personal information'
+    description: 'Create a new user account. If role is provided and not CLIENT, requires ADMIN/SUPER_ADMIN authentication. Without role, creates CLIENT by default.'
   })
   @ApiBody({ 
     type: CreateUserDto,
     description: 'User registration details',
     examples: {
       therapist: {
-        summary: 'Therapist Registration',
+        summary: 'Therapist Registration (Admin only)',
         value: {
           email: 'therapist@example.com',
           password: 'SecurePass123!',
@@ -59,7 +63,7 @@ export class AuthController {
         },
       },
       admin: {
-        summary: 'Admin Registration',
+        summary: 'Admin Registration (Super Admin only)',
         value: {
           email: 'admin@example.com',
           password: 'AdminPass123!',
@@ -69,12 +73,43 @@ export class AuthController {
           role: 'ADMIN',
         },
       },
+      client: {
+        summary: 'Client Registration (Public)',
+        value: {
+          email: 'client@example.com',
+          password: 'ClientPass123!',
+          firstName: 'Ali',
+          lastName: 'Veli',
+          phone: '+905551111111',
+        },
+      },
     },
   })
   @ApiResponse({ status: 201, description: 'User successfully registered' })
   @ApiResponse({ status: 400, description: 'Invalid input' })
   @ApiResponse({ status: 409, description: 'User already exists' })
-  async register(@Body() dto: CreateUserDto) {
+  @ApiResponse({ status: 403, description: 'Forbidden - Role assignment requires admin privileges' })
+  async register(@Body() dto: CreateUserDto, @Request() req: ExpressRequest) {
+    // If role is provided and it's not CLIENT, require authentication
+    if (dto.role && dto.role !== 'CLIENT') {
+      const authReq = req as AuthenticatedRequest;
+      // Debug: Log request details
+      console.log('Register request - User:', authReq.user);
+      console.log('Register request - Role:', dto.role);
+      console.log('Register request - Headers:', req.headers?.authorization ? 'Token present' : 'No token');
+      
+      // Check if user is authenticated and has admin role
+      if (!authReq.user) {
+        throw new ForbiddenException('Authentication required to create users with non-CLIENT roles');
+      }
+      
+      // Check role using UserRole enum
+      const userRole = authReq.user.role as string;
+      if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+        console.log('User role check failed:', { userRole, allowed: ['ADMIN', 'SUPER_ADMIN'] });
+        throw new ForbiddenException('Only admins can create users with non-CLIENT roles');
+      }
+    }
     return this.authService.register(dto);
   }
 

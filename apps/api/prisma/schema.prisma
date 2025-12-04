@@ -243,6 +243,7 @@ model TherapistProfile {
   appointments Appointment[]
   sessions     Session[]
   waitlistRequests WaitlistRequest[]
+  clients      ClientProfile[] // Clients assigned to this therapist
   
   @@map("therapist_profiles")
 }
@@ -285,6 +286,10 @@ model ClientProfile {
   allergies         String?
   referredBy        String?
 
+  // Therapist assignment
+  therapistProfileId String?
+  therapistProfile   TherapistProfile? @relation(fields: [therapistProfileId], references: [id], onDelete: SetNull)
+
   // Consent & Legal
   consentSigned      Boolean   @default(false)
   consentSignedAt    DateTime?
@@ -302,6 +307,7 @@ model ClientProfile {
   sessions     Session[]
   
   @@index([userId])
+  @@index([therapistProfileId])
   @@map("client_profiles")
 }
 

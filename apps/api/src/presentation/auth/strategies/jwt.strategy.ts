@@ -36,6 +36,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         role: true,
         status: true,
         avatar: true,
+        organizationId: true,
+        therapistProfile: {
+          select: {
+            id: true,
+          },
+        },
+        clientProfile: {
+          select: {
+            id: true,
+            therapistProfileId: true,
+          },
+        },
       },
     });
 
@@ -50,8 +62,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (user.status === 'INACTIVE') {
       throw new UnauthorizedException('Account is inactive');
     }
-
-    return user;
+    
+    // Add therapistProfileId to user object for easy access
+    return {
+      ...user,
+      therapistProfileId: user.therapistProfile?.id,
+      clientProfileId: user.clientProfile?.id,
+    };
   }
 }
 

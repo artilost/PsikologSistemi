@@ -18,9 +18,29 @@ export interface ClientRepository extends BaseRepository<ClientProfile, Prisma.C
   }>;
 
   /**
+   * Find inactive clients (isActive = false)
+   */
+  findInactiveClients(page?: number, limit?: number): Promise<{
+    data: ClientProfile[];
+    total: number;
+    page: number;
+    limit: number;
+  }>;
+
+  /**
    * Search clients by name or email
    */
   searchClients(query: string, page?: number, limit?: number): Promise<{
+    data: ClientProfile[];
+    total: number;
+    page: number;
+    limit: number;
+  }>;
+
+  /**
+   * Find clients by therapist ID
+   */
+  findByTherapist(therapistId: string, page?: number, limit?: number): Promise<{
     data: ClientProfile[];
     total: number;
     page: number;

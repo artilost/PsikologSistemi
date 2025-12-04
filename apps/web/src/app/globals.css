@@ -2,50 +2,100 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Psikoloji sistemi için sakinleştirici tema - Teal/Sage tonları */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 150 20% 99%;
+    --foreground: 200 25% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 200 25% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --popover-foreground: 200 25% 15%;
+    
+    /* Ana renk - Sakinleştirici teal */
+    --primary: 173 58% 39%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* İkincil - Soft sage */
+    --secondary: 150 20% 95%;
+    --secondary-foreground: 173 50% 25%;
+    
+    --muted: 150 15% 95%;
+    --muted-foreground: 200 15% 45%;
+    
+    /* Accent - Warm coral */
+    --accent: 15 80% 95%;
+    --accent-foreground: 15 70% 35%;
+    
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 200 15% 89%;
+    --input: 200 15% 89%;
+    --ring: 173 58% 39%;
+    --radius: 0.625rem;
+    
+    /* Chart colors */
+    --chart-1: 173 58% 39%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 142 71% 45%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 0 72% 51%;
+    
+    /* Sidebar */
+    --sidebar-background: 200 25% 12%;
+    --sidebar-foreground: 200 15% 85%;
+    --sidebar-primary: 173 58% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 200 20% 18%;
+    --sidebar-accent-foreground: 200 15% 85%;
+    --sidebar-border: 200 20% 20%;
+    --sidebar-ring: 173 58% 50%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background: 200 25% 8%;
+    --foreground: 200 15% 95%;
+    --card: 200 25% 10%;
+    --card-foreground: 200 15% 95%;
+    --popover: 200 25% 10%;
+    --popover-foreground: 200 15% 95%;
+    
+    --primary: 173 58% 45%;
+    --primary-foreground: 200 25% 8%;
+    
+    --secondary: 200 20% 15%;
+    --secondary-foreground: 200 15% 85%;
+    
+    --muted: 200 20% 15%;
+    --muted-foreground: 200 15% 55%;
+    
+    --accent: 15 50% 20%;
+    --accent-foreground: 15 70% 85%;
+    
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 200 20% 18%;
+    --input: 200 20% 18%;
+    --ring: 173 58% 45%;
+    
+    /* Chart colors dark */
+    --chart-1: 173 58% 50%;
+    --chart-2: 199 89% 55%;
+    --chart-3: 142 71% 50%;
+    --chart-4: 38 92% 55%;
+    --chart-5: 0 72% 55%;
+    
+    /* Sidebar dark */
+    --sidebar-background: 200 30% 6%;
+    --sidebar-foreground: 200 15% 85%;
+    --sidebar-primary: 173 58% 50%;
+    --sidebar-primary-foreground: 200 25% 8%;
+    --sidebar-accent: 200 25% 12%;
+    --sidebar-accent-foreground: 200 15% 85%;
+    --sidebar-border: 200 25% 15%;
+    --sidebar-ring: 173 58% 50%;
   }
 }
 
@@ -53,8 +103,136 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    @apply scroll-smooth;
+  }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Özel scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-muted/50;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/20 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
   }
 }
 
+@layer utilities {
+  /* Glassmorphism efekti */
+  .glass {
+    @apply bg-white/80 backdrop-blur-lg border border-white/20;
+  }
+  
+  .dark .glass {
+    @apply bg-black/40 backdrop-blur-lg border border-white/10;
+  }
+  
+  /* Gradient backgrounds */
+  .gradient-primary {
+    @apply bg-gradient-to-br from-primary to-primary/80;
+  }
+  
+  .gradient-subtle {
+    @apply bg-gradient-to-br from-background via-secondary/30 to-background;
+  }
+  
+  /* Hover animasyonları */
+  .hover-lift {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg;
+  }
+  
+  .hover-scale {
+    @apply transition-transform duration-200 hover:scale-[1.02];
+  }
+  
+  /* Focus ring */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+  }
+  
+  /* Card hover */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:border-primary/20;
+  }
+
+  /* Status badges */
+  .status-success {
+    @apply bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400;
+  }
+  
+  .status-warning {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400;
+  }
+  
+  .status-error {
+    @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400;
+  }
+  
+  .status-info {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400;
+  }
+  
+  /* Animation delays for stagger effect */
+  .animate-delay-100 { animation-delay: 100ms; }
+  .animate-delay-200 { animation-delay: 200ms; }
+  .animate-delay-300 { animation-delay: 300ms; }
+  .animate-delay-400 { animation-delay: 400ms; }
+  .animate-delay-500 { animation-delay: 500ms; }
+}
+
+/* Keyframe animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from { 
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+  
+  .animate-slideUp {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+  
+  .animate-slideInRight {
+    animation: slideInRight 0.3s ease-out forwards;
+  }
+}

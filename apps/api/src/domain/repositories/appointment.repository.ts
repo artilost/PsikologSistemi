@@ -4,6 +4,7 @@ import { BaseRepository } from './base.repository';
 export interface AppointmentRepository extends BaseRepository<Appointment> {
   /**
    * Find appointments by therapist
+   * @param excludeScheduled If true, excludes SCHEDULED appointments (default: true for therapists)
    */
   findByTherapistId(
     therapistId: string,
@@ -11,6 +12,7 @@ export interface AppointmentRepository extends BaseRepository<Appointment> {
     endDate?: Date,
     page?: number,
     limit?: number,
+    excludeScheduled?: boolean,
   ): Promise<{
     data: Appointment[];
     total: number;

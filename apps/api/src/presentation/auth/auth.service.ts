@@ -26,10 +26,16 @@ export class AuthService {
   ) {}
 
   async register(dto: CreateUserDto) {
-    // Check if user exists
+    // Normalize email to lowercase
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    
+    // Check if user exists (case-insensitive email check)
     const existingUser = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.email }, { phone: dto.phone }],
+        OR: [
+          { email: { equals: normalizedEmail, mode: 'insensitive' } },
+          { phone: dto.phone }
+        ],
       },
     });
 
@@ -40,16 +46,33 @@ export class AuthService {
     // Hash password
     const hashedPassword = await bcrypt.hash(dto.password, this.SALT_ROUNDS);
 
-    // Create user
+    // Create user with profile based on role
+    const role = dto.role ?? UserRole.CLIENT;
+    
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email: normalizedEmail,
         phone: dto.phone,
         password: hashedPassword,
         firstName: dto.firstName,
         lastName: dto.lastName,
-        role: dto.role ?? UserRole.CLIENT,
+        role: role,
         status: UserStatus.PENDING_VERIFICATION,
+        // Create profile based on role
+        ...(role === UserRole.CLIENT && {
+          clientProfile: {
+            create: {
+              // ClientProfile will be created with default values
+            },
+          },
+        }),
+        ...(role === UserRole.THERAPIST && {
+          therapistProfile: {
+            create: {
+              // TherapistProfile will be created with default values
+            },
+          },
+        }),
       },
       select: {
         id: true,
@@ -65,7 +88,7 @@ export class AuthService {
       },
     });
 
-    this.logger.log(`New user registered: ${user.email}`);
+    this.logger.log(`New user registered: ${user.email} with role: ${role}`);
 
     return {
       success: true,
@@ -75,8 +98,13 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string): Promise<Omit<Awaited<ReturnType<typeof this.prisma.user.findUnique>>, 'password'> | null> {
-    const user = await this.prisma.user.findUnique({
-      where: { email },
+    // Normalize email to lowercase for case-insensitive lookup
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    const user = await this.prisma.user.findFirst({
+      where: { 
+        email: { equals: normalizedEmail, mode: 'insensitive' }
+      },
     });
 
     if (!user) {

@@ -1,5 +1,4 @@
 import { NestFactory } from '@nestjs/core';
-import { VersioningType } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -28,14 +27,8 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Global prefix
+  // Global prefix - versioning zaten prefix'te
   app.setGlobalPrefix(apiPrefix);
-
-  // Versioning
-  app.enableVersioning({
-    type: VersioningType.URI,
-    defaultVersion: '1',
-  });
 
   // Global pipes
   app.useGlobalPipes(new ZodValidationPipe());

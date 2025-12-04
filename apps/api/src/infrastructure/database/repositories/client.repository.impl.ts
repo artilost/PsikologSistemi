@@ -10,7 +10,21 @@ export class ClientRepositoryImpl implements ClientRepository {
   async findById(id: string): Promise<ClientProfile | null> {
     return this.prisma.clientProfile.findUnique({
       where: { id },
-      include: { user: true },
+      include: { 
+        user: true,
+        therapistProfile: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -22,14 +36,45 @@ export class ClientRepositoryImpl implements ClientRepository {
   }> {
     const skip = (page - 1) * limit;
 
+    // Only return active clients (isActive: true or null/undefined which defaults to true)
+    // Same logic as users: list() returns only active, listDeleted() returns only inactive
     const [data, total] = await Promise.all([
       this.prisma.clientProfile.findMany({
+        where: {
+          isActive: true, // Only active clients
+          user: {
+            role: 'CLIENT', // Only return clients with CLIENT role
+            deletedAt: null,
+          },
+        },
         skip,
         take: limit,
-        include: { user: true },
+        include: { 
+          user: true,
+          therapistProfile: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.clientProfile.count(),
+      this.prisma.clientProfile.count({
+        where: {
+          isActive: true, // Only active clients
+          user: {
+            role: 'CLIENT',
+            deletedAt: null,
+          },
+        },
+      }),
     ]);
 
     return { data, total, page, limit };
@@ -46,7 +91,21 @@ export class ClientRepositoryImpl implements ClientRepository {
     return this.prisma.clientProfile.update({
       where: { id },
       data,
-      include: { user: true },
+      include: { 
+        user: true,
+        therapistProfile: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -70,7 +129,21 @@ export class ClientRepositoryImpl implements ClientRepository {
   async findByUserId(userId: string): Promise<ClientProfile | null> {
     return this.prisma.clientProfile.findUnique({
       where: { userId },
-      include: { user: true },
+      include: { 
+        user: true,
+        therapistProfile: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -84,13 +157,91 @@ export class ClientRepositoryImpl implements ClientRepository {
 
     const [data, total] = await Promise.all([
       this.prisma.clientProfile.findMany({
-        where: { isActive: true },
+        where: {
+          isActive: true,
+          user: {
+            role: 'CLIENT', // Only return clients with CLIENT role
+            deletedAt: null,
+          },
+        },
         skip,
         take: limit,
-        include: { user: true },
+        include: { 
+          user: true,
+          therapistProfile: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.clientProfile.count({ where: { isActive: true } }),
+      this.prisma.clientProfile.count({
+        where: {
+          isActive: true,
+          user: {
+            role: 'CLIENT',
+            deletedAt: null,
+          },
+        },
+      }),
+    ]);
+
+    return { data, total, page, limit };
+  }
+
+  async findInactiveClients(page = 1, limit = 20): Promise<{
+    data: ClientProfile[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.clientProfile.findMany({
+        where: {
+          isActive: false,
+          user: {
+            role: 'CLIENT',
+            deletedAt: null,
+          },
+        },
+        skip,
+        take: limit,
+        include: { 
+          user: true,
+          therapistProfile: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.clientProfile.count({
+        where: {
+          isActive: false,
+          user: {
+            role: 'CLIENT',
+            deletedAt: null,
+          },
+        },
+      }),
     ]);
 
     return { data, total, page, limit };
@@ -108,6 +259,8 @@ export class ClientRepositoryImpl implements ClientRepository {
       this.prisma.clientProfile.findMany({
         where: {
           user: {
+            role: 'CLIENT', // Only return clients with CLIENT role
+            deletedAt: null,
             OR: [
               { firstName: { contains: query, mode: 'insensitive' } },
               { lastName: { contains: query, mode: 'insensitive' } },
@@ -117,17 +270,83 @@ export class ClientRepositoryImpl implements ClientRepository {
         },
         skip,
         take: limit,
-        include: { user: true },
+        include: { 
+          user: true,
+          therapistProfile: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.clientProfile.count({
         where: {
           user: {
+            role: 'CLIENT',
+            deletedAt: null,
             OR: [
               { firstName: { contains: query, mode: 'insensitive' } },
               { lastName: { contains: query, mode: 'insensitive' } },
               { email: { contains: query, mode: 'insensitive' } },
             ],
+          },
+        },
+      }),
+    ]);
+
+    return { data, total, page, limit };
+  }
+
+  async findByTherapist(therapistId: string, page = 1, limit = 20): Promise<{
+    data: ClientProfile[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const skip = (page - 1) * limit;
+
+    const [data, total] = await Promise.all([
+      this.prisma.clientProfile.findMany({
+        where: {
+          therapistProfileId: therapistId,
+          user: {
+            role: 'CLIENT', // Only return clients with CLIENT role
+            deletedAt: null,
+          },
+        },
+        skip,
+        take: limit,
+        include: { 
+          user: true,
+          therapistProfile: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.clientProfile.count({
+        where: {
+          therapistProfileId: therapistId,
+          user: {
+            role: 'CLIENT',
+            deletedAt: null,
           },
         },
       }),

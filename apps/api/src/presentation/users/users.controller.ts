@@ -10,6 +10,8 @@ import {
   HttpCode,
   HttpStatus,
   Post,
+  Req,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -31,7 +33,33 @@ import { UpdateUserDto } from '@psikolog/shared';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
+
+  @Get('therapists')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.THERAPIST, UserRole.CLIENT, UserRole.RECEPTIONIST)
+  @ApiOperation({ summary: 'Get list of therapists' })
+  @ApiResponse({ status: 200, description: 'Therapists retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getTherapists() {
+    return this.usersService.getTherapists();
+  }
+
+  @Get('deleted')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Get all deleted users' })
+  @ApiResponse({ status: 200, description: 'Deleted users retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async findAllDeleted(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 20;
+    return this.usersService.findAllDeleted(pageNum, limitNum);
+  }
 
   @Get()
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
@@ -41,13 +69,16 @@ export class UsersController {
   @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'includeDeleted', required: false, type: Boolean })
   async findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('includeDeleted') includeDeleted?: string,
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
-    return this.usersService.findAll(pageNum, limitNum);
+    const includeDeletedBool = includeDeleted === 'true';
+    return this.usersService.findAll(pageNum, limitNum, includeDeletedBool);
   }
 
   @Get(':id')
@@ -55,18 +86,23 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'User retrieved successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
   @ApiParam({ name: 'id', type: String })
-  async findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    // Prevent special routes from being treated as IDs
+    if (id === 'deleted' || id === 'therapists') {
+      throw new NotFoundException('Kullanıcı bulunamadı');
+    }
+    return this.usersService.findOne(id, req.user);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update user' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
   @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 403, description: 'Forbidden' })
   @ApiResponse({ status: 409, description: 'Email or phone already exists' })
   @ApiParam({ name: 'id', type: String })
-  async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.usersService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: any) {
+    return this.usersService.update(id, dto, req.user);
   }
 
   @Delete(':id')

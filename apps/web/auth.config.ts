@@ -8,10 +8,15 @@ const loginSchema = z.object({
 });
 
 export const authConfig = {
+  debug: false,
   pages: {
     signIn: '/login',
     signOut: '/logout',
     error: '/auth/error',
+  },
+  // Disable experimental features that may cause storage issues
+  experimental: {
+    enableWebAuthn: false,
   },
   providers: [
     Credentials({
@@ -24,6 +29,9 @@ export const authConfig = {
         try {
           const { email, password } = loginSchema.parse(credentials);
 
+          // Normalize email to lowercase
+          const normalizedEmail = email.toLowerCase().trim();
+
           // Call your backend API for authentication
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
           const response = await fetch(`${apiUrl}/api/v1/auth/login`, {
@@ -31,7 +39,7 @@ export const authConfig = {
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ email: normalizedEmail, password }),
           });
 
           if (!response.ok) {

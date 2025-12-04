@@ -3,6 +3,17 @@ import { BaseRepository } from './base.repository';
 
 export interface UserRepository extends BaseRepository<User, Prisma.UserCreateInput, Prisma.UserUpdateInput> {
   /**
+   * Find all users with pagination
+   * Override base findAll to include includeDeleted parameter
+   */
+  findAll(page?: number, limit?: number, includeDeleted?: boolean): Promise<{
+    data: User[];
+    total: number;
+    page: number;
+    limit: number;
+  }>;
+
+  /**
    * Find user by email
    */
   findByEmail(email: string): Promise<User | null>;
@@ -36,5 +47,15 @@ export interface UserRepository extends BaseRepository<User, Prisma.UserCreateIn
    * Enable/disable MFA
    */
   updateMfa(id: string, enabled: boolean, secret?: string): Promise<void>;
+
+  /**
+   * Find all deleted users with pagination
+   */
+  findAllDeleted(page?: number, limit?: number): Promise<{
+    data: User[];
+    total: number;
+    page: number;
+    limit: number;
+  }>;
 }
 

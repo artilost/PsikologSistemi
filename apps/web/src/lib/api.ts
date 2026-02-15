@@ -31,12 +31,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<{ message?: string; error?: { message?: string } }>) => {
-    const message = 
-      error.response?.data?.error?.message || 
-      error.response?.data?.message || 
-      error.message || 
+    const message =
+      error.response?.data?.error?.message ||
+      error.response?.data?.message ||
+      error.message ||
       'Bir hata oluştu';
-    
+
     // Handle 401 - Unauthorized (but not 403 Forbidden)
     // 403 means user is authenticated but doesn't have permission
     if (error.response?.status === 401) {
@@ -55,7 +55,7 @@ api.interceptors.response.use(
         }
       }
     }
-    
+
     return Promise.reject(new Error(message));
   }
 );
@@ -84,17 +84,17 @@ export interface PaginatedResponse<T> {
 export const authApi = {
   login: (data: { email: string; password: string }) =>
     api.post<ApiResponse<{ accessToken: string; refreshToken: string; user: User }>>('/auth/login', data),
-  
+
   register: (data: RegisterData) =>
     api.post<ApiResponse<User>>('/auth/register', data),
-  
+
   me: () => api.get<ApiResponse<User>>('/auth/me'),
-  
+
   logout: () => api.post('/auth/logout'),
-  
+
   forgotPassword: (email: string) =>
     api.post('/auth/forgot-password', { email }),
-  
+
   resetPassword: (data: { token: string; password: string }) =>
     api.post('/auth/reset-password', data),
 };
@@ -103,20 +103,45 @@ export const authApi = {
 export const usersApi = {
   list: (params?: { page?: number; limit?: number; search?: string; includeDeleted?: boolean }) =>
     api.get<PaginatedResponse<User>>('/users', { params }),
-  
+
   listDeleted: (params?: { page?: number; limit?: number }) =>
     api.get<PaginatedResponse<User>>('/users/deleted', { params }),
-  
+
   get: (id: string) => api.get<ApiResponse<User>>(`/users/${id}`),
-  
+
   getTherapists: () => api.get<ApiResponse<User[]>>('/users/therapists'),
-  
+
   update: (id: string, data: Partial<User>) =>
     api.patch<ApiResponse<User>>(`/users/${id}`, data),
-  
+
   delete: (id: string) => api.delete(`/users/${id}`),
-  
+
   restore: (id: string) => api.post<ApiResponse<User>>(`/users/${id}/restore`),
+
+  updateTherapistProfile: (data: {
+    licenseNumber?: string;
+    specialization?: string[];
+    biography?: string;
+    yearsExperience?: number;
+    hourlyRate?: number;
+    sessionDuration?: number;
+    allowOnlineBooking?: boolean;
+    autoConfirmAppointment?: boolean;
+    workingHours?: any;
+  }) => api.patch<ApiResponse<any>>('/users/me/therapist-profile', data),
+
+  updateClientProfile: (data: {
+    dateOfBirth?: string;
+    gender?: string;
+    occupation?: string;
+    emergContact?: string;
+    emergPhone?: string;
+    address?: string;
+    medicalHistory?: string;
+    currentMedication?: string;
+    allergies?: string;
+    referredBy?: string;
+  }) => api.patch<ApiResponse<any>>('/users/me/client-profile', data),
 };
 
 // Clients API
@@ -138,34 +163,34 @@ export interface CreateClientData {
 export const clientsApi = {
   list: (params?: { page?: number; limit?: number; search?: string; therapistId?: string }) =>
     api.get<PaginatedResponse<Client>>('/clients', { params }),
-  
+
   listDeleted: (params?: { page?: number; limit?: number }) =>
     api.get<PaginatedResponse<Client>>('/clients/deleted', { params }),
-  
+
   get: (id: string) => api.get<ApiResponse<Client>>(`/clients/${id}`),
-  
+
   create: (data: CreateClientData) =>
     api.post<ApiResponse<Client>>('/clients', data),
-  
+
   update: (id: string, data: Partial<Client>) =>
     api.patch<ApiResponse<Client>>(`/clients/${id}`, data),
-  
+
   updateConsent: (id: string, data: ConsentData) =>
     api.patch<ApiResponse<Client>>(`/clients/${id}/consent`, data),
-  
+
   delete: (id: string) => api.delete(`/clients/${id}`),
-  
+
   restore: (id: string) => api.post(`/clients/${id}/restore`),
-  
+
   search: (q: string, params?: { page?: number; limit?: number }) =>
     api.get<PaginatedResponse<Client>>('/clients/search', { params: { q, ...params } }),
 };
 
 // Appointments API
 export const appointmentsApi = {
-  list: (params?: { 
-    page?: number; 
-    limit?: number; 
+  list: (params?: {
+    page?: number;
+    limit?: number;
     therapistId?: string;
     clientId?: string;
     status?: string;
@@ -173,24 +198,24 @@ export const appointmentsApi = {
     endDate?: string;
     excludeScheduled?: boolean;
   }) => api.get<PaginatedResponse<Appointment>>('/appointments', { params }),
-  
+
   get: (id: string) => api.get<ApiResponse<Appointment>>(`/appointments/${id}`),
-  
+
   create: (data: CreateAppointmentData) =>
     api.post<ApiResponse<Appointment>>('/appointments', data),
-  
+
   update: (id: string, data: Partial<Appointment>) =>
     api.patch<ApiResponse<Appointment>>(`/appointments/${id}`, data),
-  
+
   updateStatus: (id: string, status: string) =>
     api.patch<ApiResponse<Appointment>>(`/appointments/${id}/status`, { status }),
-  
+
   cancel: (id: string, reason?: string) =>
     api.post<ApiResponse<Appointment>>(`/appointments/${id}/cancel`, { reason }),
-  
+
   reschedule: (id: string, data: { startTime: string; endTime: string }) =>
     api.post<ApiResponse<Appointment>>(`/appointments/${id}/reschedule`, data),
-  
+
   getAvailableSlots: (params: { therapistId: string; date: string }) =>
     api.get<ApiResponse<TimeSlot[]>>('/appointments/available-slots', { params }),
 };
@@ -199,23 +224,26 @@ export const appointmentsApi = {
 export const sessionsApi = {
   list: (params?: { page?: number; limit?: number; therapistId?: string; clientId?: string; noteStatus?: string }) =>
     api.get<ApiResponse<Session[]>>('/sessions', { params }),
-  
+
   get: (id: string) => api.get<ApiResponse<Session>>(`/sessions/${id}`),
-  
+
   getByAppointment: (appointmentId: string) =>
     api.get<ApiResponse<Session>>(`/sessions/by-appointment/${appointmentId}`),
-  
+
   create: (data: CreateSessionData) =>
     api.post<ApiResponse<Session>>('/sessions', data),
   
+  startSessionFromAppointment: (appointmentId: string) =>
+    api.post<ApiResponse<Session>>('/sessions', { appointmentId }),
+
   updateNotes: (id: string, data: SessionNotesData) =>
     api.patch<ApiResponse<Session>>(`/sessions/${id}/notes`, data),
-  
+
   sign: (id: string) => api.post<ApiResponse<{ message: string }>>(`/sessions/${id}/sign`),
-  
+
   getDrafts: (therapistId?: string) =>
     api.get<ApiResponse<Session[]>>('/sessions/drafts', { params: therapistId ? { therapistId } : undefined }),
-  
+
   getClientHistory: (clientId: string, limit?: number) =>
     api.get<ApiResponse<Session[]>>(`/sessions/client-history/${clientId}`, { params: limit ? { limit } : undefined }),
 };
@@ -224,26 +252,26 @@ export const sessionsApi = {
 export const paymentsApi = {
   list: (params?: { page?: number; limit?: number; status?: string; userId?: string }) =>
     api.get<PaginatedResponse<Payment>>('/payments', { params }),
-  
+
   get: (id: string) => api.get<ApiResponse<Payment>>(`/payments/${id}`),
-  
+
   create: (data: CreatePaymentData) =>
     api.post<ApiResponse<Payment>>('/payments', data),
-  
+
   process: (id: string, data: { method: string; paidAmount: number }) =>
     api.post<ApiResponse<Payment>>(`/payments/${id}/process`, data),
-  
+
   refund: (id: string, data: { refundAmount: number; refundReason: string }) =>
     api.post<ApiResponse<Payment>>(`/payments/${id}/refund`, data),
-  
+
   getStats: (params?: { startDate?: string; endDate?: string; userId?: string }) =>
     api.get<ApiResponse<PaymentStats>>('/payments/stats', { params }),
-  
+
   getPending: (userId?: string) =>
     api.get<ApiResponse<Payment[]>>('/payments/pending', { params: userId ? { userId } : undefined }),
-  
+
   delete: (id: string) => api.delete<ApiResponse<{ message: string }>>(`/payments/${id}`),
-  
+
   update: (id: string, data: { amount?: number; description?: string }) =>
     api.patch<ApiResponse<Payment>>(`/payments/${id}`, data),
 };
@@ -251,16 +279,25 @@ export const paymentsApi = {
 // Reports API
 export const reportsApi = {
   getDashboard: () => api.get<ApiResponse<DashboardStats>>('/reports/dashboard'),
-  
+
   getAppointmentStats: (params?: { startDate?: string; endDate?: string; therapistId?: string }) =>
     api.get<ApiResponse<AppointmentStats>>('/reports/appointments', { params }),
-  
+
   getRevenue: (params?: { startDate?: string; endDate?: string }) =>
     api.get<ApiResponse<RevenueStats>>('/reports/revenue', { params }),
-  
+
   getTherapistPerformance: (params?: { startDate?: string; endDate?: string }) =>
     api.get<ApiResponse<TherapistPerformance[]>>('/reports/therapist-performance', { params }),
 };
+
+// Organization API
+export const organizationApi = {
+  getSettings: () => api.get<ApiResponse<any>>('/organization/settings'),
+
+  updateSettings: (data: { defaultTherapistSchedule?: any; defaultSessionDuration?: number }) =>
+    api.patch<ApiResponse<any>>('/organization/settings', data),
+};
+
 
 // Types
 export interface User {

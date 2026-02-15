@@ -8,14 +8,19 @@ Bu dokümantasyon, projenin teknik yapısını, mimarisini ve her bileşenin ner
 
 1. [Proje Genel Bakış](#proje-genel-bakış)
 2. [Mimari Yapı](#mimari-yapı)
-3. [Klasör Yapısı ve Açıklamaları](#klasör-yapısı-ve-açıklamaları)
-4. [Modül Detayları](#modül-detayları)
-5. [Veri Akışı ve İş Mantığı](#veri-akışı-ve-iş-mantığı)
-6. [Authentication ve Authorization](#authentication-ve-authorization)
-7. [Database Schema](#database-schema)
-8. [API Yapısı](#api-yapısı)
-9. [Frontend Yapısı](#frontend-yapısı)
-10. [Sorun Çözme Rehberi](#sorun-çözme-rehberi)
+3. [Mimari Diyagramlar](#mimari-diyagramlar)
+4. [Klasör Yapısı ve Açıklamaları](#klasör-yapısı-ve-açıklamaları)
+5. [Modül Detayları](#modül-detayları)
+6. [Veri Akışı ve İş Mantığı](#veri-akışı-ve-iş-mantığı)
+7. [Authentication ve Authorization](#authentication-ve-authorization)
+8. [Database Schema](#database-schema)
+9. [API Yapısı](#api-yapısı)
+10. [Frontend Yapısı](#frontend-yapısı)
+11. [Test Stratejisi](#test-stratejisi)
+12. [Deployment Rehberi](#deployment-rehberi)
+13. [Güvenlik Best Practices](#güvenlik-best-practices)
+14. [Performans Optimizasyonları](#performans-optimizasyonları)
+15. [Sorun Çözme Rehberi](#sorun-çözme-rehberi)
 
 ---
 
@@ -64,504 +69,6 @@ psikolog-sistemi/
 ### Backend: Clean Architecture + DDD
 
 Backend, **3 katmanlı Clean Architecture** yapısına sahiptir:
-
-1. **Domain Layer** (`apps/api/src/domain/`)
-   - İş mantığı (Business Logic)
-   - Entity'ler ve Value Objects
-   - Repository Interface'leri
-
-2. **Infrastructure Layer** (`apps/api/src/infrastructure/`)
-   - Database (Prisma)
-   - Cache (Redis)
-   - External Services
-   - Repository Implementations
-
-3. **Presentation Layer** (`apps/api/src/presentation/`)
-   - Controllers (REST API)
-   - Services (Use Cases)
-   - DTOs ve Validation
-
-### Frontend: Next.js App Router
-
-Frontend, **Next.js 15 App Router** yapısını kullanır:
-- Server Components (default)
-- Client Components (`"use client"`)
-- Route Groups: `(auth)`, `(dashboard)`
-- API Routes: `/api/auth/[...nextauth]`
-
----
-
-## 📁 Klasör Yapısı ve Açıklamaları
-
-### Root Seviyesi
-
-```
-psikolog-sistemi/
-├── apps/                    # Ana uygulamalar
-├── packages/                # Paylaşılan paketler
-├── docker-compose.yml       # Local development servisleri
-├── turbo.json               # Turborepo config
-├── pnpm-workspace.yaml      # pnpm workspace config
-└── package.json             # Root package.json
-```
-
-### Backend (`apps/api/`)
-
-```
-apps/api/
-├── src/
-│   ├── domain/              # Domain Layer
-│   │   ├── base/            # Base entity ve value object
-│   │   ├── repositories/    # Repository interface'leri
-│   │   └── value-objects/   # Value Objects (Email, Phone, Money, vb.)
-│   │
-│   ├── infrastructure/      # Infrastructure Layer
-│   │   ├── cache/           # Redis modülü
-│   │   ├── config/          # Konfigürasyon (env validation)
-│   │   ├── database/        # Prisma modülü ve repository implementations
-│   │   ├── exceptions/      # Exception filter'lar
-│   │   └── logger/          # Logger servisi
-│   │
-│   ├── presentation/        # Presentation Layer
-│   │   ├── auth/            # Authentication modülü
-│   │   │   ├── auth.controller.ts
-│   │   │   ├── auth.service.ts
-│   │   │   ├── decorators/  # @CurrentUser, @Roles, @Public
-│   │   │   ├── guards/       # JWT, Roles, Local guards
-│   │   │   └── strategies/  # Passport strategies
-│   │   │
-│   │   ├── users/           # Kullanıcı yönetimi
-│   │   ├── clients/        # Danışan yönetimi
-│   │   ├── appointments/   # Randevu yönetimi
-│   │   ├── sessions/       # Terapi seansları
-│   │   ├── payments/       # Ödeme yönetimi
-│   │   └── reports/        # Raporlar
-│   │
-│   ├── app.module.ts        # Ana modül (tüm modüller burada import edilir)
-│   └── main.ts              # Uygulama giriş noktası
-│
-├── prisma/
-│   ├── schema.prisma        # Database schema
-│   └── migrations/          # Migration dosyaları
-│
-└── test/                    # E2E testler
-```
-
-**Önemli Notlar:**
-- Her modül (`auth`, `users`, `appointments`, vb.) kendi `*.module.ts`, `*.controller.ts`, `*.service.ts` dosyalarına sahiptir
-- Repository pattern kullanılır: Interface `domain/repositories/`, Implementation `infrastructure/database/repositories/`
-- Tüm API endpoint'leri `/api/v1` prefix'i ile başlar
-
-### Frontend (`apps/web/`)
-
-```
-apps/web/
-├── src/
-│   ├── app/                 # Next.js App Router
-│   │   ├── (auth)/          # Route Group: Auth sayfaları
-│   │   │   ├── layout.tsx   # Auth layout (login/register için)
-│   │   │   ├── login/
-│   │   │   │   └── page.tsx  # Login sayfası
-│   │   │   └── register/
-│   │   │       └── page.tsx # Register sayfası
-│   │   │
-│   │   ├── (dashboard)/     # Route Group: Dashboard sayfaları
-│   │   │   ├── layout.tsx   # Dashboard layout (sidebar, header)
-│   │   │   └── dashboard/
-│   │   │       ├── page.tsx           # Ana dashboard
-│   │   │       ├── appointments/
-│   │   │       │   └── page.tsx        # Randevu yönetimi sayfası
-│   │   │       ├── clients/
-│   │   │       │   └── page.tsx        # Danışan yönetimi sayfası
-│   │   │       └── users/
-│   │   │           └── page.tsx        # Kullanıcı yönetimi sayfası
-│   │   │
-│   │   ├── api/
-│   │   │   └── auth/
-│   │   │       └── [...nextauth]/
-│   │   │           └── route.ts        # NextAuth API route
-│   │   │
-│   │   ├── layout.tsx       # Root layout
-│   │   ├── page.tsx         # Ana sayfa (redirect)
-│   │   └── providers.tsx    # React providers (Toaster, vb.)
-│   │
-│   ├── components/         # React bileşenleri
-│   │   ├── ui/              # Shadcn UI bileşenleri
-│   │   │   ├── button.tsx
-│   │   │   ├── dialog.tsx
-│   │   │   ├── form.tsx
-│   │   │   └── ...          # Diğer UI bileşenleri
-│   │   │
-│   │   └── layout/          # Layout bileşenleri
-│   │       ├── header.tsx   # Üst menü
-│   │       └── sidebar.tsx  # Yan menü
-│   │
-│   ├── lib/                 # Yardımcı fonksiyonlar
-│   │   ├── api.ts           # API client (Axios instance)
-│   │   └── utils.ts         # Utility fonksiyonlar
-│   │
-│   └── hooks/               # Custom React hooks
-│       └── use-toast.ts
-│
-├── auth.config.ts           # NextAuth konfigürasyonu
-├── auth.ts                  # NextAuth handler
-├── middleware.ts            # Next.js middleware (auth kontrolü)
-└── next.config.js           # Next.js config
-```
-
-**Önemli Notlar:**
-- `(auth)` ve `(dashboard)` route groups, farklı layout'lar için kullanılır
-- Tüm sayfalar default olarak Server Component'tir, `"use client"` ile Client Component yapılır
-- API çağrıları `lib/api.ts` içindeki `api` instance'ı üzerinden yapılır
-
-### Shared Package (`packages/shared/`)
-
-```
-packages/shared/
-├── src/
-│   ├── dtos/                # Data Transfer Objects
-│   │   ├── user.dto.ts
-│   │   ├── appointment.dto.ts
-│   │   ├── client.dto.ts
-│   │   └── ...
-│   │
-│   ├── schemas/             # Zod validation schemas
-│   │   ├── user.schema.ts
-│   │   ├── appointment.schema.ts
-│   │   └── ...
-│   │
-│   ├── enums.ts             # Paylaşılan enum'lar
-│   ├── types.ts             # TypeScript type'ları
-│   └── utils.ts             # Utility fonksiyonlar
-│
-└── package.json
-```
-
-**Önemli Notlar:**
-- Frontend ve backend arasında paylaşılan kod burada bulunur
-- DTOs ve Zod schemas burada tanımlanır
-- Her değişiklikten sonra `pnpm --filter @psikolog/shared build` çalıştırılmalı
-
----
-
-## 🔧 Modül Detayları
-
-### 1. Authentication Modülü
-
-**Konum:** `apps/api/src/presentation/auth/`
-
-**Dosyalar:**
-- `auth.controller.ts`: REST endpoint'leri (`/auth/login`, `/auth/register`, `/auth/me`)
-- `auth.service.ts`: İş mantığı (login, register, token oluşturma)
-- `guards/`: JWT, Roles, Local guards
-- `strategies/`: Passport JWT ve Local strategies
-- `decorators/`: `@CurrentUser()`, `@Roles()`, `@Public()`
-
-**Frontend Entegrasyonu:**
-- `apps/web/auth.config.ts`: NextAuth konfigürasyonu
-- `apps/web/src/app/api/auth/[...nextauth]/route.ts`: NextAuth API route
-- `apps/web/src/lib/api.ts`: `authApi` object'i
-
-**Akış:**
-1. Kullanıcı login formunu doldurur
-2. Frontend `authApi.login()` çağırır
-3. Backend `/auth/login` endpoint'i çağrılır
-4. Backend JWT token oluşturur ve döner
-5. NextAuth session'a token kaydedilir
-6. Sonraki isteklerde `Authorization: Bearer <token>` header'ı eklenir
-
-**Önemli Notlar:**
-- Email case-insensitive (küçük harfe çevrilir)
-- JWT token 7 gün geçerlidir
-- Refresh token Redis'te saklanır
-- 401 hatası durumunda otomatik logout yapılır (`lib/api.ts` interceptor)
-
-### 2. Users Modülü
-
-**Konum:** `apps/api/src/presentation/users/`
-
-**Dosyalar:**
-- `users.controller.ts`: `/users` endpoint'leri
-- `users.service.ts`: Kullanıcı CRUD işlemleri
-- `getTherapists()`: Terapist listesi (otomatik TherapistProfile oluşturur)
-
-**Frontend:**
-- `apps/web/src/app/(dashboard)/dashboard/users/page.tsx`: Kullanıcı yönetimi sayfası
-
-**Endpoint'ler:**
-- `GET /users`: Kullanıcı listesi (pagination, search, includeDeleted)
-- `GET /users/therapists`: Terapist listesi (otomatik TherapistProfile oluşturur)
-- `GET /users/:id`: Kullanıcı detayı
-- `PATCH /users/:id`: Kullanıcı güncelle
-- `DELETE /users/:id`: Kullanıcı sil (soft delete)
-- `POST /users/:id/restore`: Silinen kullanıcıyı geri getir
-
-**Önemli Notlar:**
-- `getTherapists()` metodu:
-  - `THERAPIST` rolündeki tüm kullanıcıları getirir
-  - Her kullanıcı için `therapistProfile` kontrol edilir
-  - Eğer `therapistProfile` yoksa, otomatik olarak oluşturulur
-  - Response'da her terapist için `therapistProfileId` döner
-- Bu, `therapistProfileId` undefined sorununu çözer
-- Tenant isolation: ADMIN'ler sadece kendi organizasyonlarındaki kullanıcıları görebilir
-
-### 3. Clients Modülü
-
-**Konum:** `apps/api/src/presentation/clients/`
-
-**Dosyalar:**
-- `clients.controller.ts`: `/clients` endpoint'leri
-- `clients.service.ts`: Danışan CRUD işlemleri
-
-**Frontend:**
-- `apps/web/src/app/(dashboard)/dashboard/clients/page.tsx`: Danışan yönetimi sayfası
-
-**Önemli Notlar:**
-- Her danışan bir terapiste atanabilir (`therapistProfileId`)
-- Danışan listesi, seçilen terapiste göre filtrelenebilir
-
-### 4. Appointments Modülü
-
-**Konum:** `apps/api/src/presentation/appointments/`
-
-**Dosyalar:**
-- `appointments.controller.ts`: `/appointments` endpoint'leri
-- `appointments.service.ts`: Randevu iş mantığı
-- `appointments.module.ts`: NestJS modül tanımı
-- `appointment.repository.ts` (interface): `domain/repositories/`
-- `appointment.repository.impl.ts` (implementation): `infrastructure/database/repositories/`
-
-**Frontend:**
-- `apps/web/src/app/(dashboard)/dashboard/appointments/page.tsx`: Randevu yönetimi sayfası
-  - Randevu listesi, oluşturma, güncelleme, iptal, erteleme
-  - Filtreleme: Tümü, Planlanan, Geçmiş, Onaylanan, Onay Bekleyen, İptal Edilen
-  - Conflict kontrolü (frontend'de de yapılır)
-
-**Endpoint'ler:**
-- `GET /appointments`: Randevu listesi (filtreleme: `status`, `excludeScheduled`, `therapistId`, `clientId`, `startDate`, `endDate`)
-- `GET /appointments/available-slots`: Müsait saatleri getir
-- `GET /appointments/upcoming/:therapistId`: Terapistin yaklaşan randevuları
-- `GET /appointments/today/:therapistId`: Terapistin bugünkü randevuları
-- `POST /appointments`: Yeni randevu oluştur
-- `GET /appointments/:id`: Randevu detayı
-- `PATCH /appointments/:id`: Randevu güncelle
-- `PATCH /appointments/:id/status`: Durum güncelle
-- `POST /appointments/:id/reschedule`: Randevu ertele
-- `POST /appointments/:id/cancel`: Randevu iptal et
-- `DELETE /appointments/:id`: Randevu sil (sadece SUPER_ADMIN, ADMIN)
-
-**Önemli Notlar:**
-- `excludeScheduled` parametresi:
-  - Query string olarak gönderilir: `excludeScheduled=false` veya `excludeScheduled=true`
-  - Controller'da: `excludeScheduled === 'false'` ise `false` olur (SCHEDULED dahil)
-  - `excludeScheduled === 'true'` veya `undefined` ise `undefined` olur (default davranış)
-  - Service'de: `excludeScheduled !== false` ise `true` olarak davranır (SCHEDULED exclude edilir)
-  - Terapistler için default: `SCHEDULED` randevular exclude edilir
-  - Terapistler, `excludeScheduled=false` query param ile `SCHEDULED` randevuları görebilir
-- Conflict kontrolü: Aynı saatte başka randevu varsa hata döner
-- `CANCELLED` ve `NO_SHOW` durumundaki randevular conflict kontrolünde otomatik exclude edilir
-- Reschedule işleminde eski randevu `excludeId` parametresi ile conflict kontrolünden çıkarılır
-- Randevu oluştururken `therapistId` olarak `therapistProfileId` veya `userId` gönderilebilir (controller otomatik dönüştürür)
-
-**Appointment Status'ları:**
-- `SCHEDULED`: Onay bekliyor (terapist onaylamalı)
-- `CONFIRMED`: Onaylandı
-- `CHECKED_IN`: Danışan geldi
-- `IN_PROGRESS`: Seans devam ediyor
-- `COMPLETED`: Tamamlandı
-- `CANCELLED`: İptal edildi
-- `NO_SHOW`: Gelmedi
-- `RESCHEDULED`: Ertelendi
-
-### 5. Sessions Modülü
-
-**Konum:** `apps/api/src/presentation/sessions/`
-
-**Dosyalar:**
-- `sessions.controller.ts`: `/sessions` endpoint'leri
-- `sessions.service.ts`: Seans notları ve iş mantığı
-
-**Önemli Notlar:**
-- Her seans bir randevuya bağlıdır (1:1 ilişki)
-- Klinik notlar field-level encryption ile saklanabilir
-- `isPrivate` flag'i: Ebeveynler göremez
-
-### 6. Payments Modülü
-
-**Konum:** `apps/api/src/presentation/payments/`
-
-**Dosyalar:**
-- `payments.controller.ts`: `/payments` endpoint'leri
-- `payments.service.ts`: Ödeme iş mantığı
-- `apps/api/src/infrastructure/database/repositories/payment.repository.impl.ts`: Ödeme repository implementasyonu
-
-**Ödeme Durumları:**
-- `PENDING`: Bekleyen ödeme
-- `PAID`: Tamamlanmış ödeme
-- `PARTIALLY_PAID`: Kısmen ödenmiş ödeme
-- `REFUNDED`: İade edilmiş ödeme (artık kullanılmıyor, yerine PENDING/PARTIALLY_PAID kullanılıyor)
-- `CANCELLED`: İptal edilmiş ödeme
-- `FAILED`: Başarısız ödeme
-
-**Ödeme İşlemleri:**
-
-1. **Ödeme Oluşturma:**
-   - `POST /payments` - Yeni ödeme kaydı oluştur
-   - Seansa bağlı veya bağımsız ödeme oluşturulabilir
-   - Ödeme yöntemleri: CASH, CREDIT_CARD, BANK_TRANSFER, ONLINE, INSURANCE
-
-2. **Ödeme İşleme:**
-   - `POST /payments/:id/process` - Ödeme al
-   - Kısmen ödenmiş ödemeler için kalan tutarı alabilir
-   - İade yapıldıktan sonra kalan tutar varsa tekrar ödeme alınabilir
-
-3. **İade İşlemi:**
-   - `POST /payments/:id/refund` - Ödeme iadesi yap
-   - İade yapıldıktan sonra:
-     - Eğer tüm ödenen tutar iade edildiyse: Status `PENDING` olur, `remainingAmount = amount`
-     - Eğer kısmi iade yapıldıysa: Status `PARTIALLY_PAID` olur, `remainingAmount` güncellenir
-     - İade sonrası kalan tutar varsa (`remainingAmount > 0`), ödeme tekrar işlenebilir
-
-4. **Ödeme Güncelleme:**
-   - `PATCH /payments/:id` - Ödeme tutarını ve açıklamasını güncelle
-   - Sadece `PENDING` durumundaki ödemeler için tutar düzenlenebilir
-
-5. **Ödeme İptal:**
-   - `DELETE /payments/:id` - Ödemeyi iptal et (soft delete)
-   - Status `CANCELLED` olur
-
-**Önemli Notlar:**
-- Her ödeme bir seansa bağlı olabilir (opsiyonel)
-- Session Package desteği var (10 seans paketi gibi)
-- İade yapıldıktan sonra kalan tutar varsa, ödeme tekrar işlenebilir
-- Bekleyen ödemeler için tutar düzenleme özelliği mevcuttur
-- Ödeme istatistikleri: Toplam gelir, bekleyen ödemeler, tamamlanan ödemeler
-
----
-
-## 🔄 Veri Akışı ve İş Mantığı
-
-### Randevu Oluşturma Akışı
-
-```
-1. Frontend: Kullanıcı randevu formunu doldurur
-   ↓
-2. Frontend: appointmentsApi.create() çağrılır
-   ↓
-3. Backend: POST /appointments
-   ↓
-4. Controller: appointments.controller.ts → create()
-   ↓
-5. Service: appointments.service.ts → create()
-   - Conflict kontrolü yapılır
-   - TherapistProfileId doğrulanır
-   - ClientProfileId doğrulanır
-   ↓
-6. Repository: appointment.repository.impl.ts → create()
-   ↓
-7. Database: Prisma → PostgreSQL
-   ↓
-8. Response: Yeni randevu döner
-   ↓
-9. Frontend: Randevu listesi yenilenir
-```
-
-### Conflict Kontrolü
-
-**Konum:** `apps/api/src/infrastructure/database/repositories/appointment.repository.impl.ts`
-
-**`hasConflict()` Metodu:**
-```typescript
-hasConflict(
-  therapistId: string,
-  startTime: Date,
-  endTime: Date,
-  excludeId?: string  // Reschedule durumunda eski randevu ID'si
-): Promise<boolean>
-```
-
-**Kontrol Kriterleri:**
-- Aynı `therapistId`
-- Aynı zaman dilimi (startTime - endTime arasında çakışma)
-- Status: `CANCELLED` veya `NO_SHOW` değil (otomatik exclude edilir)
-- `excludeId` varsa: O ID'ye sahip randevu conflict kontrolünden çıkarılır
-
-**Kullanım:**
-- Yeni randevu oluştururken: `excludeId` gönderilmez
-- Reschedule işleminde: `excludeId` olarak eski randevu ID'si gönderilir
-
-**Frontend'de de kontrol edilir:**
-- `apps/web/src/app/(dashboard)/dashboard/appointments/page.tsx`
-- `isTimeSlotAvailable()` fonksiyonu
-- Frontend'de de `CANCELLED` ve `NO_SHOW` durumundaki randevular exclude edilir
-
-### Danışan-Terapist Atama
-
-**Konum:** `apps/web/src/app/(dashboard)/dashboard/clients/page.tsx`
-
-**Akış:**
-1. Admin/Receptionist danışan listesini görür
-2. Her danışan için terapist seçimi yapılır
-3. `clientsApi.update()` çağrılır
-4. Backend `clientProfile.therapistProfileId` güncellenir
-5. Randevu oluştururken, danışanın terapisti otomatik seçilir
-
----
-
-## 🔐 Authentication ve Authorization
-
-### JWT Token Yapısı
-
-**Token Süreleri:**
-- **Access Token (JWT):** 7 gün (`apps/api/src/infrastructure/config/configuration.ts`)
-- **Refresh Token:** 30 gün (Redis'te saklanır)
-- **NextAuth Session:** 30 gün (`apps/web/auth.config.ts`)
-
-**Token içeriği:**
-```typescript
-{
-  id: string;           // User ID
-  email: string;
-  role: UserRole;      // CLIENT, THERAPIST, ADMIN, vb.
-  iat: number;         // Issued at
-  exp: number;         // Expires at
-}
-```
-
-### Role-Based Access Control (RBAC)
-
-**Roller:**
-- `SUPER_ADMIN`: Platform yöneticisi
-- `ADMIN`: Klinik yöneticisi
-- `THERAPIST`: Terapist
-- `RECEPTIONIST`: Resepsiyonist
-- `ACCOUNTANT`: Muhasebe
-- `CLIENT`: Danışan
-
-**Guard Kullanımı:**
-```typescript
-// Controller'da
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ADMIN', 'THERAPIST')
-@Get('appointments')
-```
-
-**Frontend'de:**
-- `session.user.role` ile kontrol edilir
-- Sayfa bazında veya component bazında conditional rendering
-
-### API Interceptor
-
-**Konum:** `apps/web/src/lib/api.ts`
-
-**Özellikler:**
-- Request interceptor: Her istekte JWT token eklenir
-- Response interceptor: 401 hatası durumunda otomatik logout
-- Error handling: Hata mesajları toast ile gösterilir
-
----
-
-## 🗄️ Database Schema
 
 ### Ana Tablolar
 
@@ -843,6 +350,756 @@ import { useSession } from 'next-auth/react';
 const { data: session } = useSession();
 const userRole = session?.user?.role;
 ```
+
+---
+
+## 🧪 Test Stratejisi
+
+### Test Piramidi
+
+```
+        ┌─────────────┐
+        │   E2E Tests │  (Az sayıda, kritik akışlar)
+        │  (Playwright)│
+        └─────────────┘
+       ┌─────────────────┐
+       │ Integration    │  (Orta sayıda, modül entegrasyonları)
+       │ Tests          │
+       └─────────────────┘
+      ┌─────────────────────┐
+      │   Unit Tests        │  (Çok sayıda, fonksiyon/component testleri)
+      │  (Jest + Vitest)    │
+      └─────────────────────┘
+```
+
+### Backend Test Yapısı
+
+**Konum:** `apps/api/test/`
+
+**Test Türleri:**
+
+1. **Unit Tests:**
+   - Konum: `apps/api/src/**/*.spec.ts`
+   - Framework: Jest
+   - Test edilenler:
+     - Service metodları
+     - Repository metodları
+     - Utility fonksiyonlar
+     - Value Objects
+
+2. **Integration Tests:**
+   - Konum: `apps/api/test/integration/`
+   - Framework: Jest + Supertest
+   - Test edilenler:
+     - API endpoint'leri
+     - Database işlemleri
+     - Authentication akışları
+
+3. **E2E Tests:**
+   - Konum: `apps/api/test/e2e/`
+   - Framework: Jest + Supertest
+   - Test edilenler:
+     - Tam kullanıcı akışları
+     - Kritik business logic
+
+**Test Çalıştırma:**
+
+```bash
+# Tüm testler
+cd apps/api
+pnpm test
+
+# Watch mode
+pnpm test:watch
+
+# Coverage
+pnpm test:cov
+
+# E2E testler
+pnpm test:e2e
+```
+
+**Örnek Test:**
+
+```typescript
+// apps/api/src/presentation/appointments/appointments.service.spec.ts
+describe('AppointmentsService', () => {
+  let service: AppointmentsService;
+  let repository: AppointmentRepository;
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        AppointmentsService,
+        {
+          provide: AppointmentRepository,
+          useValue: {
+            hasConflict: jest.fn(),
+            create: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    service = module.get<AppointmentsService>(AppointmentsService);
+    repository = module.get<AppointmentRepository>(AppointmentRepository);
+  });
+
+  it('should create appointment when no conflict', async () => {
+    repository.hasConflict = jest.fn().resolvedValue(false);
+    repository.create = jest.fn().resolvedValue(mockAppointment);
+
+    const result = await service.create(createDto);
+
+    expect(result).toBeDefined();
+    expect(repository.hasConflict).toHaveBeenCalled();
+  });
+});
+```
+
+### Frontend Test Yapısı
+
+**Test Türleri:**
+
+1. **Unit Tests:**
+   - Konum: `apps/web/src/**/*.test.tsx`
+   - Framework: Vitest + React Testing Library
+   - Test edilenler:
+     - React component'leri
+     - Custom hooks
+     - Utility fonksiyonlar
+
+2. **Integration Tests:**
+   - Konum: `apps/web/src/**/*.integration.test.tsx`
+   - Framework: Vitest + React Testing Library
+   - Test edilenler:
+     - Form işlemleri
+     - API çağrıları (mock)
+     - State yönetimi
+
+3. **E2E Tests:**
+   - Konum: `apps/web/e2e/`
+   - Framework: Playwright
+   - Test edilenler:
+     - Kullanıcı akışları
+     - Sayfa navigasyonu
+     - Form gönderimi
+
+**Test Çalıştırma:**
+
+```bash
+# Tüm testler
+cd apps/web
+pnpm test
+
+# Watch mode
+pnpm test:watch
+
+# Coverage
+pnpm test:coverage
+
+# E2E testler
+pnpm test:e2e
+```
+
+**Örnek Test:**
+
+```typescript
+// apps/web/src/components/ui/button.test.tsx
+import { render, screen } from '@testing-library/react';
+import { Button } from './button';
+
+describe('Button', () => {
+  it('renders button with text', () => {
+    render(<Button>Click me</Button>);
+    expect(screen.getByText('Click me')).toBeInTheDocument();
+  });
+
+  it('calls onClick when clicked', () => {
+    const handleClick = jest.fn();
+    render(<Button onClick={handleClick}>Click me</Button>);
+    
+    screen.getByText('Click me').click();
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+});
+```
+
+### Test Coverage Hedefleri
+
+- **Unit Tests:** %80+ coverage
+- **Integration Tests:** Kritik endpoint'ler için %100
+- **E2E Tests:** Ana kullanıcı akışları için %100
+
+### Test Best Practices
+
+1. **AAA Pattern (Arrange-Act-Assert):**
+   ```typescript
+   it('should do something', () => {
+     // Arrange
+     const input = { ... };
+     
+     // Act
+     const result = service.doSomething(input);
+     
+     // Assert
+     expect(result).toBe(expected);
+   });
+   ```
+
+2. **Mock External Dependencies:**
+   - Database: Mock repository
+   - API: Mock axios
+   - External services: Mock service
+
+3. **Test Isolation:**
+   - Her test bağımsız olmalı
+   - `beforeEach` ile setup
+   - `afterEach` ile cleanup
+
+4. **Meaningful Test Names:**
+   - `it('should return error when user not found')`
+   - `it('should create appointment when no conflict')`
+
+---
+
+## 🚀 Deployment Rehberi
+
+### Production Ortamı Gereksinimleri
+
+**Minimum Gereksinimler:**
+- **Backend:** 2 CPU, 4GB RAM, 20GB Disk
+- **Frontend:** 1 CPU, 2GB RAM, 10GB Disk
+- **Database:** 2 CPU, 8GB RAM, 100GB SSD
+- **Redis:** 1 CPU, 2GB RAM, 5GB Disk
+
+### Deployment Seçenekleri
+
+#### 1. Docker Compose (Basit Deployment)
+
+**Dosya:** `docker-compose.prod.yml`
+
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: psikolog_db
+      POSTGRES_USER: psikolog_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://psikolog_user:${DB_PASSWORD}@postgres:5432/psikolog_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      NEXTAUTH_URL: ${WEB_URL}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+```
+
+**Deployment:**
+
+```bash
+# Build ve başlat
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# Logları görüntüle
+docker-compose -f docker-compose.prod.yml logs -f
+
+# Durdur
+docker-compose -f docker-compose.prod.yml down
+```
+
+#### 2. Kubernetes (Enterprise Deployment)
+
+**Manifest Örnekleri:**
+
+```yaml
+# k8s/api-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: psikolog/api:latest
+        ports:
+        - containerPort: 3001
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+spec:
+  selector:
+    app: api
+  ports:
+  - port: 80
+    targetPort: 3001
+  type: LoadBalancer
+```
+
+#### 3. Vercel (Frontend) + Railway/Render (Backend)
+
+**Frontend (Vercel):**
+1. GitHub repo'yu Vercel'e bağla
+2. Build settings:
+   - Framework: Next.js
+   - Root Directory: `apps/web`
+   - Build Command: `pnpm build`
+   - Output Directory: `.next`
+
+**Backend (Railway/Render):**
+1. GitHub repo'yu bağla
+2. Environment variables'ı ayarla
+3. Build command: `cd apps/api && pnpm install && pnpm build`
+4. Start command: `cd apps/api && pnpm start:prod`
+
+### Pre-Deployment Checklist
+
+- [ ] Environment variables ayarlandı
+- [ ] Database migration'ları çalıştırıldı
+- [ ] SSL sertifikası yapılandırıldı
+- [ ] CORS ayarları production için güncellendi
+- [ ] Logging yapılandırıldı
+- [ ] Monitoring/Alerting kuruldu
+- [ ] Backup stratejisi hazırlandı
+- [ ] Load testing yapıldı
+- [ ] Security audit tamamlandı
+
+### Database Migration (Production)
+
+```bash
+# Production migration
+cd apps/api
+pnpm prisma migrate deploy
+
+# Rollback (gerekirse)
+pnpm prisma migrate resolve --rolled-back <migration_name>
+```
+
+### Environment Variables (Production)
+
+**Backend (.env.production):**
+```env
+NODE_ENV=production
+DATABASE_URL=postgresql://user:pass@host:5432/db
+REDIS_URL=redis://host:6379
+JWT_SECRET=<strong-secret>
+JWT_EXPIRES_IN=7d
+PORT=3001
+CORS_ORIGIN=https://yourdomain.com
+```
+
+**Frontend (.env.production):**
+```env
+NEXT_PUBLIC_API_URL=https://api.yourdomain.com
+NEXTAUTH_SECRET=<strong-secret>
+NEXTAUTH_URL=https://yourdomain.com
+```
+
+### Monitoring ve Logging
+
+**Önerilen Araçlar:**
+- **Logging:** Winston (Backend), Pino (alternatif)
+- **APM:** Sentry (Error tracking)
+- **Monitoring:** Prometheus + Grafana
+- **Uptime:** UptimeRobot veya Pingdom
+
+**Log Format:**
+```json
+{
+  "timestamp": "2025-12-01T10:00:00Z",
+  "level": "info",
+  "message": "Appointment created",
+  "userId": "user-123",
+  "appointmentId": "apt-456",
+  "requestId": "req-789"
+}
+```
+
+---
+
+## 🔒 Güvenlik Best Practices
+
+### Authentication & Authorization
+
+1. **JWT Token Güvenliği:**
+   - Token'lar HTTP-only cookie'lerde saklanmalı (mümkünse)
+   - Refresh token'lar Redis'te saklanmalı
+   - Token expiration süreleri kısa tutulmalı (7 gün max)
+   - Token rotation implementasyonu
+
+2. **Password Security:**
+   - Minimum 8 karakter, karmaşık şifre zorunluluğu
+   - bcrypt ile hash'leme (cost factor: 12+)
+   - Rate limiting: Login denemeleri için
+   - 2FA desteği (gelecekte)
+
+3. **Role-Based Access Control (RBAC):**
+   - Her endpoint için role kontrolü
+   - Resource-level authorization (kullanıcı sadece kendi verilerine erişebilir)
+   - Tenant isolation (multi-tenant yapı için)
+
+### API Güvenliği
+
+1. **Rate Limiting:**
+   ```typescript
+   // apps/api/src/main.ts
+   app.use(
+     rateLimit({
+       windowMs: 15 * 60 * 1000, // 15 dakika
+       max: 100, // Her IP için 100 istek
+     })
+   );
+   ```
+
+2. **Input Validation:**
+   - Tüm input'lar Zod schema ile validate edilmeli
+   - SQL injection önleme: Prisma ORM kullanımı
+   - XSS önleme: Input sanitization
+
+3. **CORS Ayarları:**
+   ```typescript
+   app.enableCors({
+     origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+     credentials: true,
+   });
+   ```
+
+4. **Helmet.js:**
+   ```typescript
+   import helmet from 'helmet';
+   app.use(helmet());
+   ```
+
+### Database Güvenliği
+
+1. **Connection Security:**
+   - SSL/TLS bağlantıları zorunlu
+   - Database credentials environment variables'da
+   - Connection pooling
+
+2. **Data Encryption:**
+   - Hassas veriler (medical history, notes) field-level encryption
+   - At-rest encryption (database level)
+   - In-transit encryption (TLS)
+
+3. **Backup Güvenliği:**
+   - Encrypted backups
+   - Backup retention policy
+   - Test restore procedures
+
+### Frontend Güvenliği
+
+1. **XSS Önleme:**
+   - React otomatik escape yapar
+   - `dangerouslySetInnerHTML` kullanımından kaçın
+   - Content Security Policy (CSP) headers
+
+2. **CSRF Koruması:**
+   - NextAuth.js otomatik CSRF koruması
+   - SameSite cookie ayarları
+
+3. **Environment Variables:**
+   - Hassas bilgiler `NEXT_PUBLIC_*` prefix'i ile expose edilmemeli
+   - API keys client-side'da saklanmamalı
+
+### Security Headers
+
+**Backend (NestJS):**
+```typescript
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+}));
+```
+
+**Frontend (Next.js):**
+```javascript
+// next.config.js
+module.exports = {
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+    ];
+  },
+};
+```
+
+### Güvenlik Audit Checklist
+
+- [ ] Dependency vulnerabilities kontrol edildi (`pnpm audit`)
+- [ ] Environment variables güvenli saklanıyor
+- [ ] HTTPS zorunlu (production)
+- [ ] Rate limiting aktif
+- [ ] Input validation tüm endpoint'lerde
+- [ ] SQL injection koruması (Prisma)
+- [ ] XSS koruması
+- [ ] CSRF koruması
+- [ ] Security headers ayarlandı
+- [ ] Logging ve monitoring aktif
+- [ ] Backup stratejisi hazır
+- [ ] Incident response planı hazır
+
+### Güvenlik Araçları
+
+**Dependency Scanning:**
+```bash
+# pnpm audit
+pnpm audit
+
+# Snyk (ücretsiz)
+npx snyk test
+```
+
+**Code Scanning:**
+- ESLint security plugins
+- SonarQube (opsiyonel)
+
+---
+
+## ⚡ Performans Optimizasyonları
+
+### Backend Optimizasyonları
+
+1. **Database Query Optimization:**
+   ```typescript
+   // ❌ Kötü: N+1 Problem
+   const appointments = await prisma.appointment.findMany();
+   for (const apt of appointments) {
+     const therapist = await prisma.therapistProfile.findUnique({
+       where: { id: apt.therapistId }
+     });
+   }
+
+   // ✅ İyi: Include ile eager loading
+   const appointments = await prisma.appointment.findMany({
+     include: {
+       therapist: true,
+       client: true,
+     },
+   });
+   ```
+
+2. **Caching Stratejisi:**
+   ```typescript
+   // Redis cache kullanımı
+   async getTherapists() {
+     const cacheKey = 'therapists:list';
+     const cached = await this.cache.get(cacheKey);
+     
+     if (cached) {
+       return cached;
+     }
+     
+     const therapists = await this.repository.findTherapists();
+     await this.cache.set(cacheKey, therapists, 3600); // 1 saat
+     
+     return therapists;
+   }
+   ```
+
+3. **Pagination:**
+   ```typescript
+   // Cursor-based pagination (büyük listeler için)
+   async listAppointments(cursor?: string, limit = 20) {
+     return this.prisma.appointment.findMany({
+       take: limit,
+       skip: cursor ? 1 : 0,
+       cursor: cursor ? { id: cursor } : undefined,
+       orderBy: { createdAt: 'desc' },
+     });
+   }
+   ```
+
+4. **Database Indexing:**
+   ```prisma
+   // schema.prisma
+   model Appointment {
+     therapistId String
+     startTime   DateTime
+     
+     @@index([therapistId, startTime]) // Composite index
+     @@index([status]) // Status filtreleme için
+   }
+   ```
+
+5. **Connection Pooling:**
+   ```typescript
+   // Prisma connection pool
+   datasource db {
+     provider = "postgresql"
+     url      = env("DATABASE_URL")
+     // ?connection_limit=10&pool_timeout=20
+   }
+   ```
+
+### Frontend Optimizasyonları
+
+1. **Code Splitting:**
+   ```typescript
+   // Dynamic import
+   const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
+     loading: () => <Skeleton />,
+     ssr: false, // Client-side only
+   });
+   ```
+
+2. **Image Optimization:**
+   ```tsx
+   // Next.js Image component
+   import Image from 'next/image';
+   
+   <Image
+     src="/profile.jpg"
+     width={200}
+     height={200}
+     alt="Profile"
+     loading="lazy"
+   />
+   ```
+
+3. **API Response Caching:**
+   ```typescript
+   // React Query veya SWR kullanımı (gelecekte)
+   const { data } = useSWR('/api/appointments', fetcher, {
+     revalidateOnFocus: false,
+     revalidateOnReconnect: false,
+     dedupingInterval: 60000, // 1 dakika
+   });
+   ```
+
+4. **Bundle Size Optimization:**
+   ```bash
+   # Bundle analyzer
+   pnpm build
+   pnpm analyze
+   ```
+
+5. **Server Components:**
+   ```tsx
+   // ✅ Server Component (default)
+   export default async function Page() {
+     const data = await fetchData(); // Server-side
+     return <div>{data}</div>;
+   }
+
+   // ❌ Client Component (sadece gerektiğinde)
+   'use client';
+   export default function InteractiveComponent() {
+     const [state, setState] = useState();
+     return <button onClick={...}>Click</button>;
+   }
+   ```
+
+### Performance Monitoring
+
+**Backend:**
+- Response time tracking
+- Database query performance
+- Memory usage monitoring
+- CPU usage monitoring
+
+**Frontend:**
+- Web Vitals (LCP, FID, CLS)
+- Bundle size tracking
+- API response time
+- Error rate tracking
+
+**Araçlar:**
+- **Backend:** New Relic, Datadog, Prometheus
+- **Frontend:** Vercel Analytics, Google Analytics, Sentry
+
+### Performance Checklist
+
+- [ ] Database query'ler optimize edildi (N+1 önlendi)
+- [ ] Gerekli index'ler eklendi
+- [ ] Redis cache aktif
+- [ ] Pagination implementasyonu
+- [ ] Image optimization (Next.js Image)
+- [ ] Code splitting yapıldı
+- [ ] Bundle size optimize edildi
+- [ ] Server Components kullanıldı (mümkün olduğunca)
+- [ ] API response caching
+- [ ] CDN kullanımı (static assets için)
 
 ---
 
@@ -1250,4 +1507,32 @@ NEXTAUTH_URL=http://localhost:3000
 ---
 
 **Son Güncelleme:** Aralık 2025
-**Versiyon:** 1.0.0
+**Versiyon:** 2.0.0
+
+---
+
+## 📚 Ek Kaynaklar
+
+### Öğrenme Materyalleri
+
+- **NestJS:** https://docs.nestjs.com
+- **Next.js:** https://nextjs.org/docs
+- **Prisma:** https://www.prisma.io/docs
+- **TypeScript:** https://www.typescriptlang.org/docs
+- **Clean Architecture:** https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html
+
+### Yardımcı Araçlar
+
+- **Prisma Studio:** Database görselleştirme
+- **Swagger UI:** API dokümantasyonu ve test
+- **Postman/Insomnia:** API test araçları
+- **Docker Desktop:** Container yönetimi
+- **VS Code Extensions:**
+  - Prisma
+  - ESLint
+  - Prettier
+  - Tailwind CSS IntelliSense
+
+---
+
+**Not:** Bu dokümantasyon sürekli güncellenmektedir. Yeni özellikler eklendikçe veya mimari değişiklikler yapıldıkça bu dosya güncellenecektir.

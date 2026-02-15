@@ -31,23 +31,23 @@ export function formatDateTime(date: Date | string) {
   }).format(new Date(date));
 }
 
-export function formatCurrency(amount: number) {
+export function formatCurrency(amount: number, currency = 'TRY') {
   return new Intl.NumberFormat('tr-TR', {
     style: 'currency',
-    currency: 'TRY',
+    currency,
   }).format(amount);
 }
 
 export function formatPhoneNumber(phone: string) {
   const cleaned = phone.replace(/\D/g, '');
-  
+
   if (cleaned.length === 10) {
     return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)} ${cleaned.slice(6, 8)} ${cleaned.slice(8)}`;
   }
   if (cleaned.length === 11 && cleaned.startsWith('0')) {
     return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)} ${cleaned.slice(7, 9)} ${cleaned.slice(9)}`;
   }
-  
+
   return phone;
 }
 

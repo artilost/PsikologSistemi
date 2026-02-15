@@ -5,7 +5,7 @@ import { UserRepository } from '../../../domain/repositories/user.repository';
 
 @Injectable()
 export class UserRepositoryImpl implements UserRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({
@@ -23,21 +23,21 @@ export class UserRepositoryImpl implements UserRepository {
 
     // For CLIENT role users, also check if ClientProfile isActive is true
     // This ensures that clients deleted from clients page (isActive: false) don't appear in users page
-    const where = includeDeleted 
-      ? {} 
+    const where = includeDeleted
+      ? {}
       : {
-          deletedAt: null,
-          // If user is CLIENT, only show if ClientProfile isActive is true
-          OR: [
-            { role: { not: 'CLIENT' } }, // Non-CLIENT users are shown if deletedAt is null
-            {
-              role: 'CLIENT',
-              clientProfile: {
-                isActive: true, // CLIENT users are only shown if their ClientProfile isActive is true
-              },
+        deletedAt: null,
+        // If user is CLIENT, only show if ClientProfile isActive is true
+        OR: [
+          { role: { not: 'CLIENT' as any } }, // Non-CLIENT users are shown if deletedAt is null
+          {
+            role: 'CLIENT' as any,
+            clientProfile: {
+              isActive: true, // CLIENT users are only shown if their ClientProfile isActive is true
             },
-          ],
-        };
+          },
+        ],
+      };
 
     const [data, total] = await Promise.all([
       this.prisma.user.findMany({

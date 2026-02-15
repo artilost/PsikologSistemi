@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  BookOpen,
 } from 'lucide-react';
 
 import { cn, roleLabels } from '@/lib/utils';
@@ -47,6 +48,12 @@ const menuItems: MenuItem[] = [
     icon: LayoutDashboard,
   },
   {
+    title: 'Organization',
+    href: '/dashboard/organization',
+    icon: Settings,
+    roles: ['SUPER_ADMIN', 'ADMIN'], // Only for admins
+  },
+  {
     title: 'Kullanıcılar',
     href: '/dashboard/users',
     icon: Users,
@@ -68,6 +75,12 @@ const menuItems: MenuItem[] = [
     href: '/dashboard/sessions',
     icon: FileText,
     roles: ['SUPER_ADMIN', 'ADMIN', 'THERAPIST'], // Only therapists and admins can see sessions
+  },
+  {
+    title: 'Ev Ödevleri',
+    href: '/dashboard/homework',
+    icon: BookOpen,
+    roles: ['CLIENT'], // Only clients can see their homework
   },
   {
     title: 'Ödemeler',
@@ -103,10 +116,10 @@ export function Sidebar({ session }: SidebarProps) {
   const userRole = (user as { role?: string })?.role || 'CLIENT';
   const initials = user?.name
     ? user.name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
     : 'U';
 
   // Filter menu items based on user role

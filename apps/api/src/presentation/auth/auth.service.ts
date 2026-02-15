@@ -23,12 +23,12 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private redisService: RedisService,
-  ) {}
+  ) { }
 
   async register(dto: CreateUserDto) {
     // Normalize email to lowercase
     const normalizedEmail = dto.email.toLowerCase().trim();
-    
+
     // Check if user exists (case-insensitive email check)
     const existingUser = await this.prisma.user.findFirst({
       where: {
@@ -48,7 +48,7 @@ export class AuthService {
 
     // Create user with profile based on role
     const role = dto.role ?? UserRole.CLIENT;
-    
+
     const user = await this.prisma.user.create({
       data: {
         email: normalizedEmail,
@@ -100,14 +100,19 @@ export class AuthService {
   async validateUser(email: string, password: string): Promise<Omit<Awaited<ReturnType<typeof this.prisma.user.findUnique>>, 'password'> | null> {
     // Normalize email to lowercase for case-insensitive lookup
     const normalizedEmail = email.toLowerCase().trim();
-    
+
     const user = await this.prisma.user.findFirst({
-      where: { 
+      where: {
         email: { equals: normalizedEmail, mode: 'insensitive' }
       },
     });
 
     if (!user) {
+      return null;
+    }
+
+    // Check if user has a password (could be null for Keycloak users)
+    if (!user.password) {
       return null;
     }
 
@@ -126,9 +131,9 @@ export class AuthService {
     return result;
   }
 
-  async login(user: { 
-    id: string; 
-    email: string; 
+  async login(user: {
+    id: string;
+    email: string;
     role: string;
     firstName?: string | null;
     lastName?: string | null;
@@ -183,10 +188,10 @@ export class AuthService {
   async refreshToken(refreshToken: string) {
     try {
       const payload = this.jwtService.verify(refreshToken);
-      
+
       // Verify token exists in Redis
       const storedToken = await this.redisService.get(`refresh_token:${payload.sub}`);
-      
+
       if (!storedToken || storedToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
@@ -298,7 +303,7 @@ export class AuthService {
 
       // Verify token exists in Redis
       const storedToken = await this.redisService.get(`reset_token:${payload.sub}`);
-      
+
       if (!storedToken || storedToken !== token) {
         throw new BadRequestException('Invalid or expired reset token');
       }

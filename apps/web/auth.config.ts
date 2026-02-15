@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import KeycloakProvider from 'next-auth/providers/keycloak';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -19,6 +20,11 @@ export const authConfig = {
     enableWebAuthn: false,
   },
   providers: [
+    KeycloakProvider({
+      clientId: process.env.KEYCLOAK_CLIENT_ID,
+      clientSecret: process.env.KEYCLOAK_CLIENT_SECRET,
+      issuer: process.env.KEYCLOAK_ISSUER,
+    }),
     Credentials({
       name: 'credentials',
       credentials: {
@@ -69,14 +75,19 @@ export const authConfig = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       // Initial sign in
-      if (user) {
+      if (account && user) {
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.role = (user as any).role;
-        token.accessToken = (user as any).accessToken;
+        token.role = (user as any).role || 'CLIENT';
+
+        if (account.provider === 'credentials') {
+          token.accessToken = (user as any).accessToken;
+        } else {
+          token.accessToken = account.access_token;
+        }
       }
       return token;
     },

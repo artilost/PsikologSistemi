@@ -234,6 +234,7 @@ model TherapistProfile {
 
   // Settings
   sessionDuration        Int     @default(50) // minutes
+  breakDuration          Int     @default(10) // minutes - mola süresi (seanslar arası)
   allowOnlineBooking     Boolean @default(true)
   autoConfirmAppointment Boolean @default(false)
 

@@ -20,6 +20,7 @@ import { AppointmentsModule } from './presentation/appointments/appointments.mod
 import { SessionsModule } from './presentation/sessions/sessions.module';
 import { PaymentsModule } from './presentation/payments/payments.module';
 import { ReportsModule } from './presentation/reports/reports.module';
+import { OrganizationModule } from './presentation/organization/organization.module';
 
 // Shared
 import { HealthController } from './presentation/health/health.controller';
@@ -57,6 +58,7 @@ import { HealthController } from './presentation/health/health.controller';
     SessionsModule,
     PaymentsModule,
     ReportsModule,
+    OrganizationModule,
   ],
   controllers: [HealthController],
   providers: [

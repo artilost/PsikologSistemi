@@ -24,8 +24,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -60,6 +58,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [user, setUser] = useState<any>(null);
 
   // Edit form state
@@ -67,6 +66,15 @@ export default function ProfilePage() {
     firstName: '',
     lastName: '',
     phone: '',
+    // Client Profile Fields
+    dateOfBirth: '',
+    gender: '',
+    occupation: '',
+    address: '',
+    // Therapist Profile Fields
+    licenseNumber: '',
+    specialization: '',
+    biography: '',
   });
 
   useEffect(() => {
@@ -75,11 +83,24 @@ export default function ProfilePage() {
         setLoading(true);
         const response = await authApi.me();
         if (response.data.success && response.data.data) {
-          setUser(response.data.data);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const userData = response.data.data as any;
+          setUser(userData);
+
+          // Populate form
           setEditForm({
-            firstName: response.data.data.firstName || '',
-            lastName: response.data.data.lastName || '',
-            phone: response.data.data.phone || '',
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            phone: userData.phone || '',
+            // Client
+            dateOfBirth: userData.clientProfile?.dateOfBirth ? new Date(userData.clientProfile.dateOfBirth).toISOString().split('T')[0] : '',
+            gender: userData.clientProfile?.gender || '',
+            occupation: userData.clientProfile?.occupation || '',
+            address: userData.clientProfile?.address || '',
+            // Therapist
+            licenseNumber: userData.therapistProfile?.licenseNumber || '',
+            specialization: userData.therapistProfile?.specialization?.join(', ') || '',
+            biography: userData.therapistProfile?.biography || '',
           });
         }
       } catch (error) {
@@ -97,12 +118,52 @@ export default function ProfilePage() {
 
     setSaving(true);
     try {
-      await usersApi.update(user.id, editForm);
-      
+      // 1. Update basic user info
+      await usersApi.update(user.id, {
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        phone: editForm.phone,
+      });
+
+      // 2. Update role-specific profile
+      if (user.role === 'CLIENT') {
+        await usersApi.updateClientProfile({
+          dateOfBirth: editForm.dateOfBirth,
+          gender: editForm.gender,
+          occupation: editForm.occupation,
+          address: editForm.address,
+          // Required fields that might be missing in edit form but needed for DTO
+          emergContact: user.clientProfile?.emergContact || 'Belirtilmedi',
+          emergPhone: user.clientProfile?.emergPhone || 'Belirtilmedi',
+        });
+      } else if (user.role === 'THERAPIST') {
+        await usersApi.updateTherapistProfile({
+          licenseNumber: editForm.licenseNumber,
+          specialization: editForm.specialization.split(',').map((s: string) => s.trim()),
+          biography: editForm.biography,
+        });
+      }
+
       // Update local state
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setUser((prev: any) => ({
         ...prev,
-        ...editForm,
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        phone: editForm.phone,
+        clientProfile: prev.clientProfile ? {
+          ...prev.clientProfile,
+          dateOfBirth: editForm.dateOfBirth,
+          gender: editForm.gender,
+          occupation: editForm.occupation,
+          address: editForm.address,
+        } : prev.clientProfile,
+        therapistProfile: prev.therapistProfile ? {
+          ...prev.therapistProfile,
+          licenseNumber: editForm.licenseNumber,
+          specialization: editForm.specialization.split(',').map((s: string) => s.trim()),
+          biography: editForm.biography,
+        } : prev.therapistProfile,
       }));
 
       // Update session
@@ -116,10 +177,28 @@ export default function ProfilePage() {
 
       toast.success('Profil güncellendi');
       setEditDialogOpen(false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
+      console.error(error);
       toast.error(error.message || 'Profil güncellenirken bir hata oluştu');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const response = await usersApi.uploadAvatar(file);
+      if (response.data.success) {
+        toast.success("Avatar başarıyla güncellendi");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setUser((prev: any) => ({ ...prev, avatar: response.data.data.avatar }));
+      }
+    } catch (error) {
+      toast.error("Avatar yüklenirken bir hata oluştu");
     }
   };
 
@@ -153,13 +232,19 @@ export default function ProfilePage() {
                     <AvatarImage src={user?.avatar} alt={user?.firstName} />
                     <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
                   </Avatar>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full"
+                  <Label
+                    htmlFor="avatar-upload"
+                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
                   >
                     <Camera className="h-4 w-4" />
-                  </Button>
+                    <Input
+                      id="avatar-upload"
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                    />
+                  </Label>
                 </div>
                 <div className="flex-1 text-center sm:text-left">
                   <h1 className="text-2xl font-bold">
@@ -317,29 +402,31 @@ export default function ProfilePage() {
 
       {/* Edit Profile Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Profili Düzenle</DialogTitle>
             <DialogDescription>Profil bilgilerinizi güncelleyin</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="firstName">Ad</Label>
-              <Input
-                id="firstName"
-                value={editForm.firstName}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, firstName: e.target.value }))}
-                className="mt-2"
-              />
-            </div>
-            <div>
-              <Label htmlFor="lastName">Soyad</Label>
-              <Input
-                id="lastName"
-                value={editForm.lastName}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, lastName: e.target.value }))}
-                className="mt-2"
-              />
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName">Ad</Label>
+                <Input
+                  id="firstName"
+                  value={editForm.firstName}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName">Soyad</Label>
+                <Input
+                  id="lastName"
+                  value={editForm.lastName}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                  className="mt-2"
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="phone">Telefon</Label>
@@ -351,6 +438,90 @@ export default function ProfilePage() {
                 className="mt-2"
               />
             </div>
+
+            {/* Client Specific Fields */}
+            {user?.role === 'CLIENT' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="dateOfBirth">Doğum Tarihi</Label>
+                    <Input
+                      id="dateOfBirth"
+                      type="date"
+                      value={editForm.dateOfBirth}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, dateOfBirth: e.target.value }))}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="gender">Cinsiyet</Label>
+                    <select
+                      id="gender"
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 mt-2"
+                      value={editForm.gender}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, gender: e.target.value }))}
+                    >
+                      <option value="">Seçiniz</option>
+                      <option value="male">Erkek</option>
+                      <option value="female">Kadın</option>
+                      <option value="other">Diğer</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="occupation">Meslek</Label>
+                  <Input
+                    id="occupation"
+                    value={editForm.occupation}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, occupation: e.target.value }))}
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="address">Adres</Label>
+                  <Input
+                    id="address"
+                    value={editForm.address}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))}
+                    className="mt-2"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Therapist Specific Fields */}
+            {user?.role === 'THERAPIST' && (
+              <>
+                <div>
+                  <Label htmlFor="licenseNumber">Lisans Numarası</Label>
+                  <Input
+                    id="licenseNumber"
+                    value={editForm.licenseNumber}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, licenseNumber: e.target.value }))}
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="specialization">Uzmanlık Alanları (Virgülle ayırın)</Label>
+                  <Input
+                    id="specialization"
+                    value={editForm.specialization}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, specialization: e.target.value }))}
+                    className="mt-2"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="biography">Biyografi</Label>
+                  <Input
+                    id="biography"
+                    value={editForm.biography}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, biography: e.target.value }))}
+                    className="mt-2"
+                  />
+                </div>
+              </>
+            )}
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={saving}>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Users,
@@ -15,6 +16,7 @@ import {
   CalendarDays,
   FileText,
   Bell,
+  Loader2,
 } from 'lucide-react';
 
 import { Header } from '@/components/layout/header';
@@ -69,9 +71,8 @@ function StatCard({ title, value, description, icon, trend, loading }: StatCardP
         <div className="flex items-center gap-2 mt-1">
           {trend && (
             <span
-              className={`flex items-center text-xs font-medium ${
-                trend.isPositive ? 'text-green-600' : 'text-red-600'
-              }`}
+              className={`flex items-center text-xs font-medium ${trend.isPositive ? 'text-green-600' : 'text-red-600'
+                }`}
             >
               {trend.isPositive ? (
                 <ArrowUpRight className="h-3 w-3 mr-0.5" />
@@ -90,8 +91,6 @@ function StatCard({ title, value, description, icon, trend, loading }: StatCardP
   );
 }
 
-// Recent activities removed - will be added when API endpoint is ready
-
 // Client Dashboard Component
 function ClientDashboard({ userName, userId }: { userName: string; userId: string }) {
   const [loading, setLoading] = useState(true);
@@ -106,6 +105,7 @@ function ClientDashboard({ userName, userId }: { userName: string; userId: strin
         // Get user profile to find client profile ID
         const profileResponse = await authApi.me();
         if (profileResponse.data.success && profileResponse.data.data) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const user = profileResponse.data.data as any;
           // Client profile ID is in user.clientProfile.id
           if (user.clientProfile?.id) {
@@ -118,7 +118,7 @@ function ClientDashboard({ userName, userId }: { userName: string; userId: strin
             setLoading(false);
           }
         }
-      } catch (err: any) {
+      } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
         // If 401 Unauthorized, logout user
         if (err?.response?.status === 401 || err?.message?.includes('401')) {
           if (typeof window !== 'undefined') {
@@ -152,18 +152,18 @@ function ClientDashboard({ userName, userId }: { userName: string; userId: strin
         setLoading(true);
         // Get upcoming appointments (future dates only)
         const now = new Date();
-        const response = await appointmentsApi.list({ 
+        const response = await appointmentsApi.list({
           clientId: clientProfileId,
           limit: 5,
           startDate: now.toISOString(), // Only future appointments
         });
-        
+
         if (response.data.success && response.data.data) {
           // Transform appointments to include therapist info if available
           const appointments = response.data.data.map((apt: any) => ({
             id: apt.id,
             therapistId: apt.therapistId,
-            therapistName: apt.therapist?.user?.firstName 
+            therapistName: apt.therapist?.user?.firstName
               ? `${apt.therapist.user.firstName} ${apt.therapist.user.lastName || ''}`.trim()
               : 'Terapist',
             startTime: apt.startTime,
@@ -171,18 +171,18 @@ function ClientDashboard({ userName, userId }: { userName: string; userId: strin
             status: apt.status,
             type: apt.type || 'Bireysel Terapi',
           }));
-          
+
           setMyAppointments(appointments);
         } else {
           setMyAppointments([]);
         }
-      } catch (err: any) {
+      } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
         console.error('Failed to fetch appointments:', err);
-        const errorMessage = err.response?.status === 404 
+        const errorMessage = err.response?.status === 404
           ? 'Randevu bulunamadı'
           : err.response?.status === 403
-          ? 'Bu işlem için yetkiniz yok'
-          : 'Randevular yüklenirken bir hata oluştu';
+            ? 'Bu işlem için yetkiniz yok'
+            : 'Randevular yüklenirken bir hata oluştu';
         setError(errorMessage);
         setMyAppointments([]);
       } finally {
@@ -197,9 +197,9 @@ function ClientDashboard({ userName, userId }: { userName: string; userId: strin
 
   return (
     <div className="flex flex-col">
-      <Header 
-        title={`Hoş Geldiniz, ${userName}!`} 
-        description="Randevularınızı ve bilgilerinizi buradan takip edebilirsiniz" 
+      <Header
+        title={`Hoş Geldiniz, ${userName}!`}
+        description="Randevularınızı ve bilgilerinizi buradan takip edebilirsiniz"
       />
 
       <div className="flex-1 p-6 space-y-6">
@@ -374,7 +374,7 @@ function AdminDashboard() {
             pendingPayments: response.data.data.pendingPayments || 0,
           });
         }
-      } catch (err: any) {
+      } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
         // Only log error, don't show mock data
         console.error('Failed to fetch dashboard stats:', err);
         if (err.response?.status !== 403) {
@@ -408,7 +408,7 @@ function AdminDashboard() {
         if (response.data.success && response.data.data) {
           const appointments = response.data.data.map((apt: any) => ({
             id: apt.id,
-            clientName: apt.client?.user?.firstName 
+            clientName: apt.client?.user?.firstName
               ? `${apt.client.user.firstName} ${apt.client.user.lastName || ''}`.trim()
               : 'Danışan',
             time: new Date(apt.startTime),
@@ -498,40 +498,40 @@ function AdminDashboard() {
                 </div>
               ) : todayAppointments.length > 0 ? (
                 todayAppointments.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                        {getInitials(appointment.clientName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{appointment.clientName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {appointment.type}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 text-sm font-medium">
-                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                        {formatTime(appointment.time)}
+                  <div
+                    key={appointment.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                          {getInitials(appointment.clientName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{appointment.clientName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {appointment.type}
+                        </p>
                       </div>
-                      <Badge
-                        variant={
-                          appointment.status === 'CONFIRMED' ? 'success' : 'secondary'
-                        }
-                        className="mt-1"
-                      >
-                        {statusLabels[appointment.status]}
-                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-sm font-medium">
+                          <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                          {formatTime(appointment.time)}
+                        </div>
+                        <Badge
+                          variant={
+                            appointment.status === 'CONFIRMED' ? 'success' : 'secondary'
+                          }
+                          className="mt-1"
+                        >
+                          {statusLabels[appointment.status]}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -541,23 +541,6 @@ function AdminDashboard() {
               )}
             </CardContent>
           </Card>
-
-          {/* Recent Activity - Removed mock data, will be added when API is ready */}
-          {/* 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Son Aktiviteler</CardTitle>
-                <CardDescription>Kliniğinizdeki son işlemler</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Son aktiviteler yakında eklenecek</p>
-              </div>
-            </CardContent>
-          </Card>
-          */}
         </div>
       </div>
     </div>
@@ -566,32 +549,62 @@ function AdminDashboard() {
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
-  
+  const router = useRouter();
+  const [isProfileChecked, setIsProfileChecked] = useState(false);
+
   // Get user role and ID from session
-  const userRole = (session?.user as any)?.role || 'CLIENT';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userRole = ((session?.user as any)?.role as string)?.toUpperCase() || 'CLIENT';
   const userName = session?.user?.name?.split(' ')[0] || 'Kullanıcı';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const userId = (session?.user as any)?.id || '';
 
-  // Show loading while checking session
-  if (status === 'loading') {
+  useEffect(() => {
+    async function checkProfile() {
+      if (status === "loading" || !session || isProfileChecked) return;
+
+      try {
+        const response = await authApi.me();
+        const user = response.data.data;
+
+        // Check if profile is incomplete
+        let isProfileComplete = false;
+        if (user.role === "THERAPIST") {
+          // Check if therapistProfile exists and has licenseNumber
+          isProfileComplete = !!(user.therapistProfile && user.therapistProfile.licenseNumber);
+        } else if (user.role === "CLIENT") {
+          // Check if clientProfile exists and has dateOfBirth
+          isProfileComplete = !!(user.clientProfile && user.clientProfile.dateOfBirth);
+        } else {
+          // ADMIN, SUPER_ADMIN, etc. don't need profile completion
+          isProfileComplete = true;
+        }
+
+        if (!isProfileComplete) {
+          // Immediately redirect to onboarding
+          router.replace("/onboarding");
+          return;
+        } else {
+          setIsProfileChecked(true);
+        }
+      } catch (error) {
+        console.error("Failed to check profile", error);
+        // On error, allow access (don't block user)
+        setIsProfileChecked(true);
+      }
+    }
+
+    checkProfile();
+  }, [status, session?.user?.id, router, isProfileChecked]);
+
+  // Show loading while checking session or profile
+  // Don't render dashboard content until profile is checked
+  if (status === 'loading' || !isProfileChecked) {
     return (
-      <div className="flex flex-col">
-        <Header title="Yükleniyor..." description="" />
-        <div className="flex-1 p-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-20 mb-1" />
-                  <Skeleton className="h-4 w-32" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      <div className="flex h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Yükleniyor...</p>
         </div>
       </div>
     );

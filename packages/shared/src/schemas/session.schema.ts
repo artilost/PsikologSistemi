@@ -12,6 +12,8 @@ export const createSessionSchema = z.object({
 
 export const updateSessionNotesSchema = z.object({
   clinicalNotes: z.string().max(10000).optional(),
+  privateNotes: z.string().max(10000).optional(), // Gizli notlar (sadece THERAPIST görebilir)
+  isPrivate: z.boolean().optional(), // Notların gizli olup olmadığı flag'i
   treatmentPlan: z.string().max(5000).optional(),
   progressNotes: z.string().max(5000).optional(),
   diagnosis: z.string().max(2000).optional(),
@@ -35,4 +37,15 @@ export const sessionQuerySchema = z.object({
   endDate: z.string().datetime().optional(),
   sortBy: z.enum(['createdAt', 'actualStart']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
+});
+
+export const startSessionFromAppointmentSchema = z.object({
+  appointmentId: z.string().cuid(),
+  actualStart: z.string().datetime().optional(),
+});
+
+export const completeSessionSchema = z.object({
+  actualEnd: z.string().datetime().optional(),
+  duration: z.number().int().positive().optional(),
+  createPayment: z.boolean().optional(),
 });

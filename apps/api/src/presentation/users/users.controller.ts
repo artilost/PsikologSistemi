@@ -22,18 +22,24 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import { ProfilesService } from './profiles.service';
+import { UpdateTherapistProfileDto, UpdateClientProfileDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { UpdateUserDto } from '@psikolog/shared';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('users')
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly profilesService: ProfilesService,
+  ) { }
 
   @Get('therapists')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.THERAPIST, UserRole.CLIENT, UserRole.RECEPTIONIST)
@@ -125,5 +131,41 @@ export class UsersController {
   @ApiParam({ name: 'id', type: String })
   async restore(@Param('id') id: string) {
     return this.usersService.restore(id);
+  }
+
+  @Patch('me/therapist-profile')
+  @Roles(UserRole.THERAPIST)
+  @ApiOperation({ summary: 'Update current user therapist profile (onboarding)' })
+  @ApiResponse({ status: 200, description: 'Therapist profile updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - User must be a therapist' })
+  async updateMyTherapistProfile(
+    @CurrentUser() user: any,
+    @Body() dto: UpdateTherapistProfileDto,
+  ) {
+    const profile = await this.profilesService.updateTherapistProfile(user.id, dto);
+    return {
+      success: true,
+      data: profile,
+      message: 'Terapist profili başarıyla güncellendi',
+    };
+  }
+
+  @Patch('me/client-profile')
+  @Roles(UserRole.CLIENT)
+  @ApiOperation({ summary: 'Update current user client profile (onboarding)' })
+  @ApiResponse({ status: 200, description: 'Client profile updated successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden - User must be a client' })
+  async updateMyClientProfile(
+    @CurrentUser() user: any,
+    @Body() dto: UpdateClientProfileDto,
+  ) {
+    const profile = await this.profilesService.updateClientProfile(user.id, dto);
+    return {
+      success: true,
+      data: profile,
+      message: 'Danışan profili başarıyla güncellendi',
+    };
   }
 }

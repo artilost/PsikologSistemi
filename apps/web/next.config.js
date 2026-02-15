@@ -10,6 +10,17 @@ const nextConfig = {
       allowedOrigins: ['localhost:3000'],
     },
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  webpack: (config, { isServer }) => {
+    // Fix Watchpack error on Windows
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/node_modules', '**/.git', '**/pagefile.sys', '**/$RECYCLE.BIN'],
+    };
+    return config;
+  },
 };
 
 module.exports = nextConfig;

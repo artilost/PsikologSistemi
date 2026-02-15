@@ -19,7 +19,7 @@ interface HeaderProps {
 }
 
 export function Header({ title, description, children }: HeaderProps) {
-  const { theme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
 
   return (
     <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">

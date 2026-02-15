@@ -13,6 +13,9 @@ export interface UserDto {
   lastLoginAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  // Profile IDs (for quick access)
+  therapistProfileId?: string;
+  clientProfileId?: string;
 }
 
 export interface CreateUserDto {

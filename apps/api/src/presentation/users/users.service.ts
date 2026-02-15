@@ -236,6 +236,11 @@ export class UsersService {
           therapistProfile: {
             select: {
               id: true,
+              sessionDuration: true,
+              breakDuration: true,
+              hourlyRate: true,
+              specialization: true,
+              workingHours: true,
             },
           },
         },
@@ -246,25 +251,23 @@ export class UsersService {
       // Create TherapistProfile for therapists who don't have one
       const therapistsWithProfiles = await Promise.all(
         therapists.map(async (user) => {
-          let therapistProfileId = user.therapistProfile?.id;
+          let therapistProfile = user.therapistProfile;
           
           // If therapist doesn't have a profile, create one
-          if (!therapistProfileId) {
+          if (!therapistProfile) {
             this.logger.info(`Creating missing TherapistProfile for user: ${user.id}`);
-            const newProfile = await this.prisma.therapistProfile.create({
+            therapistProfile = await this.prisma.therapistProfile.create({
               data: {
                 userId: user.id,
               },
             });
-            therapistProfileId = newProfile.id;
           }
           
-          // Extract therapistProfile from user before returning
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { therapistProfile, ...userData } = user;
+          // Return user with therapistProfile (keep all profile data)
           return {
-            ...userData,
-            therapistProfileId,
+            ...user,
+            therapistProfileId: therapistProfile.id, // For backward compatibility
+            therapistProfile: therapistProfile, // Full profile data
           };
         })
       );

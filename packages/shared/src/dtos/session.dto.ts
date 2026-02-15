@@ -17,6 +17,8 @@ export interface SessionDto {
   
   // Notes (encrypted)
   clinicalNotes?: string;
+  privateNotes?: string; // Gizli notlar (sadece THERAPIST görebilir)
+  isPrivate?: boolean; // Notların gizli olup olmadığı flag'i
   treatmentPlan?: string;
   progressNotes?: string;
   diagnosis?: string;
@@ -53,6 +55,8 @@ export interface CreateSessionDto {
 
 export interface UpdateSessionNotesDto {
   clinicalNotes?: string;
+  privateNotes?: string; // Gizli notlar (sadece THERAPIST görebilir)
+  isPrivate?: boolean; // Notların gizli olup olmadığı flag'i
   treatmentPlan?: string;
   progressNotes?: string;
   diagnosis?: string;
@@ -81,4 +85,15 @@ export interface SessionQueryDto {
 export interface SessionWithRelationsDto extends SessionDto {
   appointment: AppointmentDto;
   client: ClientProfileDto;
+}
+
+export interface StartSessionFromAppointmentDto {
+  appointmentId: string;
+  actualStart?: string; // ISO datetime string
+}
+
+export interface CompleteSessionDto {
+  actualEnd?: string; // ISO datetime string
+  duration?: number; // minutes
+  createPayment?: boolean; // Opsiyonel: Ödeme kaydı oluştur
 }

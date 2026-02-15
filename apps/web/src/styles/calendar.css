@@ -1,0 +1,136 @@
+/* React Big Calendar Base Styles */
+@import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+/* Custom Calendar Styling */
+.rbc-calendar {
+  font-family: inherit;
+}
+
+.rbc-header {
+  padding: 10px 5px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: capitalize;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-today {
+  background-color: hsl(var(--primary) / 0.05);
+}
+
+.rbc-event {
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  border: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.rbc-event:focus {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.rbc-selected {
+  background-color: hsl(var(--primary) / 0.8) !important;
+}
+
+.rbc-toolbar {
+  padding: 10px 0;
+  display: none;
+  /* We're using custom toolbar */
+}
+
+.rbc-month-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rbc-time-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rbc-time-header-content {
+  border-left: 1px solid hsl(var(--border));
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid hsl(var(--border) / 0.3);
+}
+
+.rbc-current-time-indicator {
+  background-color: hsl(var(--primary));
+  height: 2px;
+}
+
+/* Fix overlapping events */
+.rbc-events-container {
+  margin-right: 0 !important;
+}
+
+.rbc-event {
+  position: absolute !important;
+}
+
+.rbc-addons-dnd .rbc-event {
+  z-index: 1;
+}
+
+.rbc-event-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+
+.rbc-event-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Better spacing for overlapping events in week/day view */
+.rbc-time-slot {
+  min-height: 40px;
+}
+
+.rbc-timeslot-group {
+  min-height: 80px;
+  border-left: 1px solid hsl(var(--border));
+}
+
+.rbc-day-slot .rbc-event {
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Improve event visibility when multiple events overlap */
+.rbc-event-overlaps {
+  box-shadow: -1px 1px 5px 0px rgba(0, 0, 0, 0.2);
+}
+
+/* Fix month view event width - don't span entire row */
+.rbc-month-view .rbc-event {
+  position: relative !important;
+  width: auto !important;
+  left: auto !important;
+  right: auto !important;
+}
+
+.rbc-month-row {
+  overflow: visible;
+}
+
+/* Style for dates outside current month */
+.rbc-off-range {
+  color: hsl(var(--muted-foreground) / 0.3);
+}
+
+.rbc-off-range-bg {
+  background-color: hsl(var(--muted) / 0.3);
+}
+
+/* Hide events on off-range dates in month view */
+.rbc-off-range .rbc-event {
+  opacity: 0.3;
+}

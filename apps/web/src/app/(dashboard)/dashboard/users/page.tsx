@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
+// import { useSession } from 'next-auth/react';
 import {
   Plus,
   Search,
@@ -11,7 +11,7 @@ import {
   Phone,
   Shield,
   User as UserIcon,
-  UserPlus,
+  // UserPlus,
   Loader2,
   Edit,
   Trash2,
@@ -92,9 +92,9 @@ const createUserSchema = z.object({
 type CreateUserForm = z.infer<typeof createUserSchema>;
 
 export default function UsersPage() {
-  const { data: session } = useSession();
-  const userRole = (session?.user as any)?.role || 'CLIENT';
-  
+  // const { data: session } = useSession();
+  // const userRole = (session?.user as any)?.role || 'CLIENT';
+
   const [users, setUsers] = useState<User[]>([]);
   const [deletedUsers, setDeletedUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,7 +150,7 @@ export default function UsersPage() {
         // If no data or success is false, just set empty array (no error)
         setDeletedUsers([]);
       }
-    } catch (error: any) {
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       console.error('Failed to fetch deleted users:', error);
       // Only show error toast for real errors (not 404)
       // 404 means endpoint not found or no deleted users, which is fine - just show empty list
@@ -176,13 +176,13 @@ export default function UsersPage() {
         password: data.password,
         phone: data.phone || undefined,
         role: data.role,
-      } as any);
+      } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
 
       toast.success('Kullanıcı başarıyla oluşturuldu');
       setCreateDialogOpen(false);
       form.reset();
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       console.error('Failed to create user:', error);
       toast.error(error.message || 'Kullanıcı oluşturulurken bir hata oluştu');
     }
@@ -222,7 +222,7 @@ export default function UsersPage() {
       toast.success('Kullanıcı başarıyla geri yüklendi');
       // Refresh active users list
       fetchUsers();
-    } catch (error: any) {
+    } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       console.error('Failed to restore user:', error);
       toast.error(error.message || 'Kullanıcı geri yüklenirken bir hata oluştu');
     }
@@ -417,139 +417,139 @@ export default function UsersPage() {
 
             {/* Table */}
             <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Kullanıcı</TableHead>
-                  <TableHead>İletişim</TableHead>
-                  <TableHead>Rol</TableHead>
-                  <TableHead>Durum</TableHead>
-                  <TableHead>Kayıt Tarihi</TableHead>
-                  <TableHead className="w-[70px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Skeleton className="h-10 w-10 rounded-full" />
-                          <div>
-                            <Skeleton className="h-4 w-32 mb-1" />
-                            <Skeleton className="h-3 w-24" />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-40" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-6 w-20 rounded-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-6 w-16 rounded-full" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-28" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-8 w-8" />
-                      </TableCell>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kullanıcı</TableHead>
+                      <TableHead>İletişim</TableHead>
+                      <TableHead>Rol</TableHead>
+                      <TableHead>Durum</TableHead>
+                      <TableHead>Kayıt Tarihi</TableHead>
+                      <TableHead className="w-[70px]"></TableHead>
                     </TableRow>
-                  ))
-                ) : filteredUsers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-32 text-center">
-                      <p className="text-muted-foreground">
-                        {searchQuery || roleFilter !== 'all'
-                          ? 'Arama kriterlerine uygun kullanıcı bulunamadı'
-                          : 'Henüz kullanıcı kaydı yok'}
-                      </p>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredUsers.map((user) => (
-                    <TableRow key={user.id} className="group">
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback className="bg-primary/10 text-primary">
-                              {getInitials(`${user.firstName} ${user.lastName}`)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">
-                              {user.firstName} {user.lastName}
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Skeleton className="h-10 w-10 rounded-full" />
+                              <div>
+                                <Skeleton className="h-4 w-32 mb-1" />
+                                <Skeleton className="h-3 w-24" />
+                              </div>
                             </div>
-                            <p className="text-sm text-muted-foreground">ID: {user.id.slice(0, 8)}...</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span>{user.email}</span>
-                          </div>
-                          {user.phone && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Phone className="h-3.5 w-3.5" />
-                              <span>{user.phone}</span>
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-40" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-6 w-20 rounded-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-6 w-16 rounded-full" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-28" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-8 w-8" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : filteredUsers.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-32 text-center">
+                          <p className="text-muted-foreground">
+                            {searchQuery || roleFilter !== 'all'
+                              ? 'Arama kriterlerine uygun kullanıcı bulunamadı'
+                              : 'Henüz kullanıcı kaydı yok'}
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <TableRow key={user.id} className="group">
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback className="bg-primary/10 text-primary">
+                                  {getInitials(`${user.firstName} ${user.lastName}`)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium">
+                                  {user.firstName} {user.lastName}
+                                </div>
+                                <p className="text-sm text-muted-foreground">ID: {user.id.slice(0, 8)}...</p>
+                              </div>
                             </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="flex items-center gap-1.5 w-fit">
-                          {getRoleIcon(user.role)}
-                          {roleLabels[user.role as keyof typeof roleLabels] || user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={user.status === 'ACTIVE' ? 'success' : 'secondary'}
-                        >
-                          {user.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(user.createdAt).toLocaleDateString('tr-TR')}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Düzenle
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => handleDelete(user.id)}
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span>{user.email}</span>
+                              </div>
+                              {user.phone && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Phone className="h-3.5 w-3.5" />
+                                  <span>{user.phone}</span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="flex items-center gap-1.5 w-fit">
+                              {getRoleIcon(user.role)}
+                              {roleLabels[user.role as keyof typeof roleLabels] || user.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={user.status === 'ACTIVE' ? 'success' : 'secondary'}
                             >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Sil
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                              {user.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(user.createdAt).toLocaleDateString('tr-TR')}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>İşlemler</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Düzenle
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-red-600"
+                                  onClick={() => handleDelete(user.id)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Sil
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="deleted" className="space-y-4">
@@ -644,18 +644,7 @@ export default function UsersPage() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="secondary">
-                              {user.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm text-muted-foreground">
-                              {(user as any).deletedAt 
-                                ? new Date((user as any).deletedAt).toLocaleDateString('tr-TR')
-                                : '-'}
-                            </span>
-                          </TableCell>
-                          <TableCell>
+
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8">

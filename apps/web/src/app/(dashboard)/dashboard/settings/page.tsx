@@ -1,292 +1,246 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
-import {
-  Settings,
-  Bell,
-  Lock,
-  Palette,
-  Globe,
-  Shield,
-  Loader2,
-  Check,
-} from 'lucide-react';
-
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/header';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { WeeklyScheduleEditor, type WeeklySchedule, type DaySchedule } from '@/components/availability/weekly-schedule-editor';
 import { toast } from 'sonner';
+import { usersApi, authApi } from '@/lib/api';
+import { Loader2, Save } from 'lucide-react';
+
+const DEFAULT_DAY_SCHEDULE: DaySchedule = {
+  enabled: false,
+  slots: [],
+};
+
+const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
+  monday: { enabled: true, slots: [{ start: '09:00', end: '18:00' }] },
+  tuesday: { enabled: true, slots: [{ start: '09:00', end: '18:00' }] },
+  wednesday: { enabled: true, slots: [{ start: '09:00', end: '18:00' }] },
+  thursday: { enabled: true, slots: [{ start: '09:00', end: '18:00' }] },
+  friday: { enabled: true, slots: [{ start: '09:00', end: '18:00' }] },
+  saturday: DEFAULT_DAY_SCHEDULE,
+  sunday: DEFAULT_DAY_SCHEDULE,
+};
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
 
-  // Settings state
-  const [settings, setSettings] = useState({
-    // Notifications
-    emailNotifications: true,
-    smsNotifications: false,
-    appointmentReminders: true,
-    marketingEmails: false,
+  // Availability settings
+  const [weeklySchedule, setWeeklySchedule] = useState<WeeklySchedule>(DEFAULT_WEEKLY_SCHEDULE);
+  const [sessionDuration, setSessionDuration] = useState(50);
+  const [allowOnlineBooking, setAllowOnlineBooking] = useState(true);
+  const [autoConfirmAppointment, setAutoConfirmAppointment] = useState(false);
 
-    // Privacy
-    showProfile: true,
-    allowMessages: true,
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        setLoading(true);
+        const response = await authApi.me();
 
-    // Appearance
-    theme: 'system',
-    language: 'tr',
+        if (response.data.success && response.data.data) {
+          const userData = response.data.data as any;
+          setUserRole(userData.role);
 
-    // Security
-    twoFactorEnabled: false,
-  });
+          // Only for therapists
+          if (userData.role === 'THERAPIST' && userData.therapistProfile) {
+            const profile = userData.therapistProfile;
 
-  const handleSave = async () => {
+            // Load working hours
+            if (profile.workingHours) {
+              try {
+                const workingHours = typeof profile.workingHours === 'string'
+                  ? JSON.parse(profile.workingHours)
+                  : profile.workingHours;
+
+                // Convert backend format to component format
+                const schedule: WeeklySchedule = {
+                  monday: workingHours.monday || DEFAULT_DAY_SCHEDULE,
+                  tuesday: workingHours.tuesday || DEFAULT_DAY_SCHEDULE,
+                  wednesday: workingHours.wednesday || DEFAULT_DAY_SCHEDULE,
+                  thursday: workingHours.thursday || DEFAULT_DAY_SCHEDULE,
+                  friday: workingHours.friday || DEFAULT_DAY_SCHEDULE,
+                  saturday: workingHours.saturday || DEFAULT_DAY_SCHEDULE,
+                  sunday: workingHours.sunday || DEFAULT_DAY_SCHEDULE,
+                };
+                setWeeklySchedule(schedule);
+              } catch (e) {
+                console.error('Error parsing working hours:', e);
+              }
+            }
+
+            setSessionDuration(profile.sessionDuration || 50);
+            setAllowOnlineBooking(profile.allowOnlineBooking ?? true);
+            setAutoConfirmAppointment(profile.autoConfirmAppointment ?? false);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        toast.error('Ayarlar yüklenirken bir hata oluştu');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (status === 'authenticated') {
+      fetchSettings();
+    }
+  }, [status]);
+
+  const handleSaveAvailability = async () => {
     setSaving(true);
     try {
-      // In a real app, save settings to backend
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      toast.success('Ayarlar kaydedildi');
-    } catch (error) {
-      toast.error('Ayarlar kaydedilirken bir hata oluştu');
+      await usersApi.updateTherapistProfile({
+        workingHours: weeklySchedule,
+        sessionDuration,
+        allowOnlineBooking,
+        autoConfirmAppointment,
+      });
+
+      toast.success('Müsaitlik ayarları kaydedildi');
+    } catch (error: any) {
+      console.error('Error saving availability:', error);
+      toast.error(error.response?.data?.message || 'Ayarlar kaydedilirken bir hata oluştu');
     } finally {
       setSaving(false);
     }
   };
 
-  const updateSetting = (key: string, value: any) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-  };
+  if (status === 'loading' || loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Only therapists can access availability settings
+  if (userRole !== 'THERAPIST') {
+    return (
+      <div className="flex flex-col h-full">
+        <Header title="Ayarlar" description="Sistem ayarlarınızı yönetin" />
+        <div className="flex-1 flex items-center justify-center">
+          <Card className="max-w-md">
+            <CardHeader>
+              <CardTitle>Erişim Yok</CardTitle>
+              <CardDescription>
+                Bu sayfa sadece terapistler için erişilebilir.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <Header title="Ayarlar" />
+    <div className="flex flex-col h-full">
+      <Header title="Ayarlar" description="Müsaitlik ve randevu ayarlarınızı yönetin" />
 
-      <main className="flex-1 p-6">
-        <div className="max-w-3xl mx-auto space-y-6">
-          {/* Header */}
-          <div>
-            <h1 className="text-2xl font-bold">Ayarlar</h1>
-            <p className="text-muted-foreground">
-              Hesap ve uygulama ayarlarınızı yönetin
-            </p>
-          </div>
+      <div className="flex-1 p-6 overflow-auto">
+        <Tabs defaultValue="availability" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="availability">Müsaitlik</TabsTrigger>
+            <TabsTrigger value="preferences">Tercihler</TabsTrigger>
+          </TabsList>
 
-          {/* Notifications */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Bell className="h-5 w-5 text-muted-foreground" />
-                <CardTitle>Bildirimler</CardTitle>
-              </div>
-              <CardDescription>Bildirim tercihlerinizi yönetin</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="emailNotifications">E-posta Bildirimleri</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Önemli güncellemeler için e-posta alın
-                  </p>
-                </div>
-                <Switch
-                  id="emailNotifications"
-                  checked={settings.emailNotifications}
-                  onCheckedChange={(checked) => updateSetting('emailNotifications', checked)}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="smsNotifications">SMS Bildirimleri</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Randevu hatırlatmaları için SMS alın
-                  </p>
-                </div>
-                <Switch
-                  id="smsNotifications"
-                  checked={settings.smsNotifications}
-                  onCheckedChange={(checked) => updateSetting('smsNotifications', checked)}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="appointmentReminders">Randevu Hatırlatmaları</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Randevularınız için hatırlatma alın
-                  </p>
-                </div>
-                <Switch
-                  id="appointmentReminders"
-                  checked={settings.appointmentReminders}
-                  onCheckedChange={(checked) => updateSetting('appointmentReminders', checked)}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="marketingEmails">Pazarlama E-postaları</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Kampanya ve duyurulardan haberdar olun
-                  </p>
-                </div>
-                <Switch
-                  id="marketingEmails"
-                  checked={settings.marketingEmails}
-                  onCheckedChange={(checked) => updateSetting('marketingEmails', checked)}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          <TabsContent value="availability" className="space-y-6 mt-6">
+            <WeeklyScheduleEditor
+              value={weeklySchedule}
+              onChange={setWeeklySchedule}
+              sessionDuration={sessionDuration}
+            />
 
-          {/* Privacy */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-muted-foreground" />
-                <CardTitle>Gizlilik</CardTitle>
-              </div>
-              <CardDescription>Gizlilik tercihlerinizi yönetin</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="showProfile">Profili Göster</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Profilinizin başkaları tarafından görülmesine izin verin
-                  </p>
-                </div>
-                <Switch
-                  id="showProfile"
-                  checked={settings.showProfile}
-                  onCheckedChange={(checked) => updateSetting('showProfile', checked)}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="allowMessages">Mesajlara İzin Ver</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Diğer kullanıcıların size mesaj göndermesine izin verin
-                  </p>
-                </div>
-                <Switch
-                  id="allowMessages"
-                  checked={settings.allowMessages}
-                  onCheckedChange={(checked) => updateSetting('allowMessages', checked)}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            <div className="flex justify-end">
+              <Button onClick={handleSaveAvailability} disabled={saving}>
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Save className="mr-2 h-4 w-4" />
+                Değişiklikleri Kaydet
+              </Button>
+            </div>
+          </TabsContent>
 
-          {/* Appearance */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Palette className="h-5 w-5 text-muted-foreground" />
-                <CardTitle>Görünüm</CardTitle>
-              </div>
-              <CardDescription>Uygulama görünümünü özelleştirin</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="theme">Tema</Label>
-                <Select
-                  value={settings.theme}
-                  onValueChange={(value) => updateSetting('theme', value)}
-                >
-                  <SelectTrigger id="theme">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Açık</SelectItem>
-                    <SelectItem value="dark">Koyu</SelectItem>
-                    <SelectItem value="system">Sistem</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="language">Dil</Label>
-                <Select
-                  value={settings.language}
-                  onValueChange={(value) => updateSetting('language', value)}
-                >
-                  <SelectTrigger id="language">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="tr">Türkçe</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+          <TabsContent value="preferences" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Randevu Tercihleri</CardTitle>
+                <CardDescription>
+                  Randevu yönetimi ve onay süreçlerini yapılandırın
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="session-duration">Seans Süresi (dakika)</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Varsayılan seans süresi
+                      </p>
+                    </div>
+                    <Input
+                      id="session-duration"
+                      type="number"
+                      min="15"
+                      max="180"
+                      step="5"
+                      value={sessionDuration}
+                      onChange={(e) => setSessionDuration(parseInt(e.target.value))}
+                      className="w-24"
+                    />
+                  </div>
 
-          {/* Security */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Lock className="h-5 w-5 text-muted-foreground" />
-                <CardTitle>Güvenlik</CardTitle>
-              </div>
-              <CardDescription>Hesap güvenliğinizi yönetin</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="twoFactor">İki Faktörlü Doğrulama</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Hesabınıza ekstra güvenlik katmanı ekleyin
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="online-booking">Online Randevu</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Danışanlar online randevu alabilsin
+                      </p>
+                    </div>
+                    <Switch
+                      id="online-booking"
+                      checked={allowOnlineBooking}
+                      onCheckedChange={setAllowOnlineBooking}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="auto-confirm">Otomatik Onay</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Randevular otomatik olarak onaylansın
+                      </p>
+                    </div>
+                    <Switch
+                      id="auto-confirm"
+                      checked={autoConfirmAppointment}
+                      onCheckedChange={setAutoConfirmAppointment}
+                    />
+                  </div>
                 </div>
-                <Switch
-                  id="twoFactor"
-                  checked={settings.twoFactorEnabled}
-                  onCheckedChange={(checked) => updateSetting('twoFactorEnabled', checked)}
-                />
-              </div>
-              <Separator />
-              <div>
-                <Button variant="outline" className="w-full">
-                  Şifre Değiştir
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Kaydediliyor...
-                </>
-              ) : (
-                <>
-                  <Check className="mr-2 h-4 w-4" />
-                  Kaydet
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </main>
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveAvailability} disabled={saving}>
+                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Save className="mr-2 h-4 w-4" />
+                    Değişiklikleri Kaydet
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
-

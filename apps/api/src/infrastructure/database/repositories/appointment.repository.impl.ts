@@ -221,6 +221,49 @@ export class AppointmentRepositoryImpl implements AppointmentRepository {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
+    // Get therapist profile with working hours and session duration
+    const therapistProfile = await this.prisma.therapistProfile.findUnique({
+      where: { id: therapistId },
+      select: {
+        sessionDuration: true,
+        workingHours: true,
+      },
+    });
+
+    // Use therapist's session duration or provided duration
+    const sessionDuration = therapistProfile?.sessionDuration || duration || 50;
+    
+    // Get day of week (0 = Sunday, 1 = Monday, etc.)
+    const dayOfWeek = date.getDay();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayNames[dayOfWeek];
+
+    // Get working hours slots from therapist profile
+    let timeSlots: { start: number; end: number }[] = [];
+    
+    if (therapistProfile?.workingHours && typeof therapistProfile.workingHours === 'object') {
+      const workingHours = therapistProfile.workingHours as any;
+      const daySchedule = workingHours[dayName];
+      
+      if (daySchedule && daySchedule.enabled && daySchedule.slots && daySchedule.slots.length > 0) {
+        // Process ALL slots for the day (not just the first one)
+        timeSlots = daySchedule.slots.map((slot: any) => {
+          const [startHour, startMin] = slot.start.split(':').map(Number);
+          const [endHour, endMin] = slot.end.split(':').map(Number);
+          return {
+            start: startHour + (startMin / 60),
+            end: endHour + (endMin / 60),
+          };
+        });
+      } else {
+        // Day is disabled or has no slots - return empty array
+        return [];
+      }
+    } else {
+      // No working hours configured - use default 9-18
+      timeSlots = [{ start: 9, end: 18 }];
+    }
+
     const appointments = await this.prisma.appointment.findMany({
       where: {
         therapistId,
@@ -230,31 +273,32 @@ export class AppointmentRepositoryImpl implements AppointmentRepository {
       orderBy: { startTime: 'asc' },
     });
 
-    // Get therapist working hours (default 09:00 - 18:00)
-    const workStart = 9;
-    const workEnd = 18;
     const slots: Date[] = [];
 
-    let currentSlot = new Date(startOfDay);
-    currentSlot.setHours(workStart, 0, 0, 0);
+    // Generate slots for each time range
+    for (const timeSlot of timeSlots) {
+      let currentSlot = new Date(startOfDay);
+      currentSlot.setHours(Math.floor(timeSlot.start), (timeSlot.start % 1) * 60, 0, 0);
 
-    const endWork = new Date(startOfDay);
-    endWork.setHours(workEnd, 0, 0, 0);
+      const endWork = new Date(startOfDay);
+      endWork.setHours(Math.floor(timeSlot.end), (timeSlot.end % 1) * 60, 0, 0);
 
-    while (currentSlot < endWork) {
-      const slotEnd = new Date(currentSlot.getTime() + duration * 60000);
-      
-      const hasConflict = appointments.some(apt => {
-        return (currentSlot >= apt.startTime && currentSlot < apt.endTime) ||
-               (slotEnd > apt.startTime && slotEnd <= apt.endTime) ||
-               (currentSlot <= apt.startTime && slotEnd >= apt.endTime);
-      });
+      while (currentSlot < endWork) {
+        const slotEnd = new Date(currentSlot.getTime() + sessionDuration * 60000);
+        
+        const hasConflict = appointments.some(apt => {
+          return (currentSlot >= apt.startTime && currentSlot < apt.endTime) ||
+                 (slotEnd > apt.startTime && slotEnd <= apt.endTime) ||
+                 (currentSlot <= apt.startTime && slotEnd >= apt.endTime);
+        });
 
-      if (!hasConflict && slotEnd <= endWork) {
-        slots.push(new Date(currentSlot));
+        if (!hasConflict && slotEnd <= endWork) {
+          slots.push(new Date(currentSlot));
+        }
+
+        // Use session duration + break duration for intervals
+        currentSlot = new Date(currentSlot.getTime() + (sessionDuration + breakDuration) * 60000);
       }
-
-      currentSlot = new Date(currentSlot.getTime() + 30 * 60000); // 30 min intervals
     }
 
     return slots;

@@ -23,37 +23,37 @@ function isStorageAvailable(): boolean {
 // Polyfill BroadcastChannel for environments where it's not available
 function setupBroadcastChannelPolyfill() {
   if (typeof window === 'undefined') return;
-  
+
   // If BroadcastChannel exists but storage is blocked, create a no-op version
   if (!isStorageAvailable() && typeof BroadcastChannel !== 'undefined') {
-    const OriginalBroadcastChannel = window.BroadcastChannel;
-    
+    // const OriginalBroadcastChannel = window.BroadcastChannel;
+
     // Create a mock BroadcastChannel that doesn't throw errors
     window.BroadcastChannel = class MockBroadcastChannel {
       name: string;
       onmessage: ((event: MessageEvent) => void) | null = null;
       onmessageerror: ((event: MessageEvent) => void) | null = null;
-      
+
       constructor(name: string) {
         this.name = name;
       }
-      
+
       postMessage() {
         // No-op - silently ignore
       }
-      
+
       close() {
         // No-op
       }
-      
+
       addEventListener() {
         // No-op
       }
-      
+
       removeEventListener() {
         // No-op
       }
-      
+
       dispatchEvent(): boolean {
         return true;
       }
@@ -78,11 +78,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Setup polyfill, error handlers, and mount
   useEffect(() => {
     setupBroadcastChannelPolyfill();
-    
+
     // Handle unhandled promise rejections for storage errors
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       const message = event.reason?.message || event.reason?.toString() || '';
-      
+
       // Prevent these specific errors from showing in console
       if (
         message.includes('Access to storage is not allowed') ||
@@ -94,9 +94,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         return false;
       }
     };
-    
+
     // Handle console errors for storage access
     const originalError = console.error;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     console.error = (...args: any[]) => {
       const message = args.join(' ');
       if (
@@ -108,10 +109,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }
       originalError.apply(console, args);
     };
-    
+
     window.addEventListener('unhandledrejection', handleUnhandledRejection);
     setMounted(true);
-    
+
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
       console.error = originalError; // Restore original
@@ -124,7 +125,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthErrorBoundary>
-      <SessionProvider 
+      <SessionProvider
         refetchOnWindowFocus={false}
         // Disable refetch interval if storage is not available or not mounted
         refetchInterval={storageAvailable ? 5 * 60 : 0}

@@ -5,10 +5,8 @@ import { useSession } from 'next-auth/react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
-  Plus,
   FileText,
   Clock,
-  User,
   Calendar,
   MoreHorizontal,
   Eye,
@@ -58,6 +56,7 @@ import {
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { sessionsApi, authApi, type Session } from '@/lib/api';
 
@@ -92,7 +91,9 @@ export default function SessionsPage() {
   useEffect(() => {
     if (userRole === 'THERAPIST') {
       authApi.me().then(response => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (response.data.success && (response.data.data as any).therapistProfile?.id) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setTherapistProfileId((response.data.data as any).therapistProfile.id);
         }
       }).catch(() => {
@@ -106,12 +107,13 @@ export default function SessionsPage() {
     async function fetchSessions() {
       try {
         setLoading(true);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const params: any = { limit: 100 };
-        
+
         if (userRole === 'THERAPIST' && therapistProfileId) {
           params.therapistId = therapistProfileId;
         }
-        
+
         if (statusFilter !== 'all') {
           params.noteStatus = statusFilter;
         }
@@ -166,6 +168,7 @@ export default function SessionsPage() {
       if (response.data.success && response.data.data) {
         setSessions(response.data.data);
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast.error(error.message || 'Seans imzalanırken bir hata oluştu');
     }
@@ -387,6 +390,7 @@ export default function SessionsPage() {
             if (response.data.success && response.data.data) {
               setSessions(response.data.data);
             }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (error: any) {
             toast.error(error.message || 'Notlar güncellenirken bir hata oluştu');
           }
@@ -398,7 +402,7 @@ export default function SessionsPage() {
 
 // Session Detail Dialog Component
 function SessionDetailDialog({
-  session,
+  session: sessionData,
   open,
   onOpenChange,
 }: {
@@ -406,7 +410,10 @@ function SessionDetailDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  if (!session) return null;
+  const { data: authSession } = useSession();
+  const userRole = (authSession?.user as { role?: string })?.role || 'CLIENT';
+
+  if (!sessionData) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -414,9 +421,9 @@ function SessionDetailDialog({
         <DialogHeader>
           <DialogTitle>Seans Detayları</DialogTitle>
           <DialogDescription>
-            {session.client?.user?.firstName} {session.client?.user?.lastName} -{' '}
-            {session.appointment?.startTime
-              ? format(new Date(session.appointment.startTime), 'd MMMM yyyy HH:mm', { locale: tr })
+            {sessionData.client?.user?.firstName} {sessionData.client?.user?.lastName} -{' '}
+            {sessionData.appointment?.startTime
+              ? format(new Date(sessionData.appointment.startTime), 'd MMMM yyyy HH:mm', { locale: tr })
               : '-'}
           </DialogDescription>
         </DialogHeader>
@@ -427,75 +434,88 @@ function SessionDetailDialog({
             <div>
               <Label className="text-muted-foreground">Danışan</Label>
               <p className="font-medium">
-                {session.client?.user?.firstName} {session.client?.user?.lastName}
+                {sessionData.client?.user?.firstName} {sessionData.client?.user?.lastName}
               </p>
             </div>
             <div>
               <Label className="text-muted-foreground">Terapist</Label>
               <p className="font-medium">
-                {session.therapist?.user?.firstName} {session.therapist?.user?.lastName}
+                {sessionData.therapist?.user?.firstName} {sessionData.therapist?.user?.lastName}
               </p>
             </div>
             <div>
               <Label className="text-muted-foreground">Seans No</Label>
-              <p className="font-medium">{session.sessionNumber || '-'}</p>
+              <p className="font-medium">{sessionData.sessionNumber || '-'}</p>
             </div>
             <div>
               <Label className="text-muted-foreground">Süre</Label>
-              <p className="font-medium">{session.duration || 50} dakika</p>
+              <p className="font-medium">{sessionData.duration || 50} dakika</p>
             </div>
             <div>
               <Label className="text-muted-foreground">Not Durumu</Label>
-              <Badge className={noteStatusColors[session.noteStatus] || ''}>
-                {noteStatusLabels[session.noteStatus] || session.noteStatus}
+              <Badge className={noteStatusColors[sessionData.noteStatus] || ''}>
+                {noteStatusLabels[sessionData.noteStatus] || sessionData.noteStatus}
               </Badge>
             </div>
-            {session.signedAt && (
+            {sessionData.signedAt && (
               <div>
                 <Label className="text-muted-foreground">İmza Tarihi</Label>
                 <p className="font-medium">
-                  {format(new Date(session.signedAt), 'd MMMM yyyy HH:mm', { locale: tr })}
+                  {format(new Date(sessionData.signedAt), 'd MMMM yyyy HH:mm', { locale: tr })}
                 </p>
               </div>
             )}
           </div>
 
           {/* Clinical Notes */}
-          {session.clinicalNotes && (
+          {sessionData.clinicalNotes && (
             <div>
               <Label className="text-muted-foreground">Klinik Notlar</Label>
               <div className="mt-1 p-3 bg-muted rounded-md">
-                <p className="whitespace-pre-wrap">{session.clinicalNotes}</p>
+                <p className="whitespace-pre-wrap">{sessionData.clinicalNotes}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Private Notes - Only visible to THERAPIST */}
+          {userRole === 'THERAPIST' && sessionData.privateNotes && (
+            <div>
+              <Label className="text-muted-foreground flex items-center gap-2">
+                <span>Gizli Notlar</span>
+                <Badge variant="outline" className="text-xs">Sadece Terapist</Badge>
+              </Label>
+              <div className="mt-1 p-3 bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+                <p className="whitespace-pre-wrap">{sessionData.privateNotes}</p>
               </div>
             </div>
           )}
 
           {/* Treatment Plan */}
-          {session.treatmentPlan && (
+          {sessionData.treatmentPlan && (
             <div>
               <Label className="text-muted-foreground">Tedavi Planı</Label>
               <div className="mt-1 p-3 bg-muted rounded-md">
-                <p className="whitespace-pre-wrap">{session.treatmentPlan}</p>
+                <p className="whitespace-pre-wrap">{sessionData.treatmentPlan}</p>
               </div>
             </div>
           )}
 
           {/* Progress Notes */}
-          {session.progressNotes && (
+          {sessionData.progressNotes && (
             <div>
               <Label className="text-muted-foreground">İlerleme Notları</Label>
               <div className="mt-1 p-3 bg-muted rounded-md">
-                <p className="whitespace-pre-wrap">{session.progressNotes}</p>
+                <p className="whitespace-pre-wrap">{sessionData.progressNotes}</p>
               </div>
             </div>
           )}
 
           {/* Homework */}
-          {session.homework && (
+          {sessionData.homework && (
             <div>
               <Label className="text-muted-foreground">Ev Ödevi</Label>
               <div className="mt-1 p-3 bg-muted rounded-md">
-                <p className="whitespace-pre-wrap">{session.homework}</p>
+                <p className="whitespace-pre-wrap">{sessionData.homework}</p>
               </div>
             </div>
           )}
@@ -521,9 +541,12 @@ function EditNotesDialog({
   session: Session | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onSave: (notes: any) => Promise<void>;
 }) {
   const [clinicalNotes, setClinicalNotes] = useState('');
+  const [privateNotes, setPrivateNotes] = useState('');
+  const [isPrivate, setIsPrivate] = useState(false);
   const [treatmentPlan, setTreatmentPlan] = useState('');
   const [progressNotes, setProgressNotes] = useState('');
   const [homework, setHomework] = useState('');
@@ -532,6 +555,8 @@ function EditNotesDialog({
   useEffect(() => {
     if (session && open) {
       setClinicalNotes(session.clinicalNotes || '');
+      setPrivateNotes(session.privateNotes || '');
+      setIsPrivate(session.isPrivate || false);
       setTreatmentPlan(session.treatmentPlan || '');
       setProgressNotes(session.progressNotes || '');
       setHomework(session.homework || '');
@@ -543,6 +568,8 @@ function EditNotesDialog({
     try {
       await onSave({
         clinicalNotes,
+        privateNotes,
+        isPrivate,
         treatmentPlan,
         progressNotes,
         homework,
@@ -556,7 +583,7 @@ function EditNotesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Seans Notlarını Düzenle</DialogTitle>
           <DialogDescription>
@@ -578,6 +605,38 @@ function EditNotesDialog({
               rows={4}
               className="mt-2"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Bu notlar danışan tarafından görülebilir.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isPrivate"
+                checked={isPrivate}
+                onCheckedChange={(checked) => setIsPrivate(checked === true)}
+              />
+              <Label htmlFor="isPrivate" className="font-medium cursor-pointer">
+                Gizli Notlar (Sadece terapist görebilir)
+              </Label>
+            </div>
+            {isPrivate && (
+              <div>
+                <Label htmlFor="privateNotes">Gizli Notlar</Label>
+                <Textarea
+                  id="privateNotes"
+                  value={privateNotes}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrivateNotes(e.target.value)}
+                  placeholder="Sadece terapist tarafından görülebilecek gizli notlar..."
+                  rows={4}
+                  className="mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  ⚠️ Bu notlar danışan tarafından ASLA görülemez.
+                </p>
+              </div>
+            )}
           </div>
 
           <div>

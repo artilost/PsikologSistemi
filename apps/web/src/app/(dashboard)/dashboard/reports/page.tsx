@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import {
   BarChart3,
-  TrendingUp,
   Users,
   Calendar,
   DollarSign,
   Clock,
   Loader2,
-  Download,
   RefreshCw,
 } from 'lucide-react';
 
@@ -54,20 +52,20 @@ export default function ReportsPage() {
     startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [dashboardStats, setDashboardStats] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [appointmentStats, setAppointmentStats] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [revenueStats, setRevenueStats] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [therapistPerformance, setTherapistPerformance] = useState<any[]>([]);
 
   const userRole = (session?.user as { role?: string })?.role || 'CLIENT';
   const canAccess = ['SUPER_ADMIN', 'ADMIN', 'THERAPIST'].includes(userRole);
   const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(userRole);
 
-  useEffect(() => {
-    fetchReports();
-  }, [dateRange, canAccess]);
-
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     if (!canAccess) {
       setLoading(false);
       return;
@@ -116,7 +114,11 @@ export default function ReportsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [canAccess, dateRange, isAdmin]);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
 
   if (!canAccess) {
     return (
@@ -291,91 +293,72 @@ export default function ReportsPage() {
 
               {/* Appointment Stats */}
               {appointmentStats && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Randevu İstatistikleri</CardTitle>
-                    <CardDescription>
-                      {format(new Date(dateRange.startDate), 'd MMMM', { locale: tr })} -{' '}
-                      {format(new Date(dateRange.endDate), 'd MMMM yyyy', { locale: tr })}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-4 md:grid-cols-4">
-                      <div className="p-4 bg-muted rounded-lg">
-                        <p className="text-sm text-muted-foreground">Toplam</p>
-                        <p className="text-2xl font-bold">{appointmentStats.total || 0}</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Randevu Durumları</CardTitle>
+                      <CardDescription>
+                        Dönem içindeki randevuların durum dağılımı
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {appointmentStats.byStatus?.map((stat: any) => (
+                          <div key={stat.status} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{stat.status}</Badge>
+                            </div>
+                            <div className="font-medium">{stat.count}</div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <p className="text-sm text-green-600 dark:text-green-400">Tamamlanan</p>
-                        <p className="text-2xl font-bold text-green-700 dark:text-green-300">
-                          {appointmentStats.completed || 0}
-                        </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Randevu Türleri</CardTitle>
+                      <CardDescription>
+                        Dönem içindeki randevuların tür dağılımı
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {appointmentStats.byType?.map((stat: any) => (
+                          <div key={stat.type} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">{stat.type}</Badge>
+                            </div>
+                            <div className="font-medium">{stat.count}</div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                        <p className="text-sm text-red-600 dark:text-red-400">İptal Edilen</p>
-                        <p className="text-2xl font-bold text-red-700 dark:text-red-300">
-                          {appointmentStats.cancelled || 0}
-                        </p>
-                      </div>
-                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-                        <p className="text-sm text-yellow-600 dark:text-yellow-400">Gelmedi</p>
-                        <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">
-                          {appointmentStats.noShow || 0}
-                        </p>
-                      </div>
-                    </div>
-                    {appointmentStats.completionRate !== undefined && (
-                      <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p className="text-sm text-blue-600 dark:text-blue-400">Tamamlanma Oranı</p>
-                        <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">
-                          %{(appointmentStats.completionRate * 100).toFixed(1)}
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
               {/* Revenue Stats (Admin Only) */}
               {isAdmin && revenueStats && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Gelir Raporu</CardTitle>
+                    <CardTitle>Gelir Analizi</CardTitle>
                     <CardDescription>
-                      Dönem içi toplam gelir ve dağılım
+                      Ödeme yöntemlerine göre gelir dağılımı
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-6">
-                      <div className="p-6 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg text-white">
-                        <p className="text-sm opacity-80">Toplam Gelir</p>
-                        <p className="text-4xl font-bold">{formatCurrency(revenueStats.total || 0)}</p>
-                      </div>
-
-                      {revenueStats.byMethod && revenueStats.byMethod.length > 0 && (
-                        <div>
-                          <h4 className="font-medium mb-3">Ödeme Yöntemine Göre</h4>
-                          <div className="grid gap-2">
-                            {revenueStats.byMethod.map((item: any) => (
-                              <div
-                                key={item.method}
-                                className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                              >
-                                <span className="font-medium">
-                                  {item.method === 'CASH'
-                                    ? 'Nakit'
-                                    : item.method === 'CREDIT_CARD'
-                                    ? 'Kredi Kartı'
-                                    : item.method === 'BANK_TRANSFER'
-                                    ? 'Havale/EFT'
-                                    : item.method}
-                                </span>
-                                <span className="font-bold">{formatCurrency(item.amount)}</span>
-                              </div>
-                            ))}
+                    <div className="space-y-4">
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                      {revenueStats.byMethod?.map((stat: any) => (
+                        <div key={stat.method} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{stat.method}</Badge>
+                          </div>
+                          <div className="font-medium">
+                            {formatCurrency(stat.amount)} ({stat.count} işlem)
                           </div>
                         </div>
-                      )}
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -386,46 +369,33 @@ export default function ReportsPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle>Terapist Performansı</CardTitle>
-                    <CardDescription>Terapistlerin dönem içi performans özeti</CardDescription>
+                    <CardDescription>
+                      Terapist bazlı randevu ve gelir istatistikleri
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Terapist</TableHead>
-                          <TableHead>Toplam Seans</TableHead>
+                          <TableHead>Toplam Randevu</TableHead>
                           <TableHead>Tamamlanan</TableHead>
-                          <TableHead>Toplam Gelir</TableHead>
-                          <TableHead>Performans</TableHead>
+                          <TableHead>İptal</TableHead>
+                          <TableHead className="text-right">Gelir</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {therapistPerformance.map((therapist: any) => (
-                          <TableRow key={therapist.therapistId}>
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {therapistPerformance.map((stat: any) => (
+                          <TableRow key={stat.therapistId}>
                             <TableCell className="font-medium">
-                              {therapist.therapistName}
+                              {stat.therapistName}
                             </TableCell>
-                            <TableCell>{therapist.totalSessions}</TableCell>
-                            <TableCell>{therapist.completedSessions}</TableCell>
-                            <TableCell>{formatCurrency(therapist.totalRevenue)}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  therapist.completedSessions / therapist.totalSessions >= 0.8
-                                    ? 'default'
-                                    : therapist.completedSessions / therapist.totalSessions >= 0.5
-                                    ? 'secondary'
-                                    : 'destructive'
-                                }
-                              >
-                                %
-                                {therapist.totalSessions > 0
-                                  ? (
-                                      (therapist.completedSessions / therapist.totalSessions) *
-                                      100
-                                    ).toFixed(0)
-                                  : 0}
-                              </Badge>
+                            <TableCell>{stat.totalAppointments}</TableCell>
+                            <TableCell>{stat.completedAppointments}</TableCell>
+                            <TableCell>{stat.cancelledAppointments}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(stat.revenue)}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -441,4 +411,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-
